@@ -17,29 +17,36 @@ type WalletContextType = {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined)
 
-declare global {
-  interface Window {
-    solana?: {
-      isPhantom?: boolean
-      connect: () => Promise<{ publicKey: { toString: () => string } }>
-      disconnect: () => Promise<void>
-      on: (event: string, callback: () => void) => void
-      publicKey: { toString: () => string } | null
-    }
-    solflare?: {
-      isConnected: boolean
-      connect: () => Promise<{ publicKey: { toString: () => string } }>
-      disconnect: () => Promise<void>
-      publicKey: { toString: () => string } | null
-    }
-    backpack?: {
-      isConnected: boolean
-      connect: () => Promise<{ publicKey: { toString: () => string } }>
-      disconnect: () => Promise<void>
-      publicKey: { toString: () => string } | null
-    }
-  }
+// Định nghĩa kiểu cho các ví mà không mở rộng Window interface
+type PhantomWallet = {
+  isPhantom?: boolean
+  connect: () => Promise<{ publicKey: { toString: () => string } }>
+  disconnect: () => Promise<void>
+  on: (event: string, callback: () => void) => void
+  publicKey: { toString: () => string } | null
 }
+
+type SolflareWallet = {
+  isConnected: boolean
+  connect: () => Promise<{ publicKey: { toString: () => string } }>
+  disconnect: () => Promise<void>
+  publicKey: { toString: () => string } | null
+}
+
+type BackpackWallet = {
+  isConnected: boolean
+  connect: () => Promise<{ publicKey: { toString: () => string } }>
+  disconnect: () => Promise<void>
+  publicKey: { toString: () => string } | null
+}
+
+// Hàm helper để truy cập các ví một cách an toàn
+const getPhantomWallet = (): PhantomWallet | undefined =>
+  (window as unknown as { solana?: PhantomWallet }).solana
+const getSolflareWallet = (): SolflareWallet | undefined =>
+  (window as unknown as { solflare?: SolflareWallet }).solflare
+const getBackpackWallet = (): BackpackWallet | undefined =>
+  (window as unknown as { backpack?: BackpackWallet }).backpack
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = useState(false)
@@ -61,9 +68,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const reconnectWallet = async (type: WalletType) => {
     try {
-      if (type === 'phantom' && window.solana?.isPhantom) {
-        if (window.solana.publicKey) {
-          const publicKeyStr = window.solana.publicKey.toString()
+      if (type === 'phantom') {
+        const phantom = getPhantomWallet()
+        if (phantom?.isPhantom && phantom.publicKey) {
+          const publicKeyStr = phantom.publicKey.toString()
           setWalletType(type)
           setAddress(publicKeyStr)
           setPublicKey(publicKeyStr)
@@ -88,38 +96,44 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       let backpackResponse
 
       switch (type) {
-        case 'phantom':
-          if (!window.solana?.isPhantom) {
+        case 'phantom': {
+          const phantom = getPhantomWallet()
+          if (!phantom?.isPhantom) {
             window.open('https://phantom.app/', '_blank')
             throw new Error('Phantom wallet not found. Please install Phantom.')
           }
 
-          phantomResponse = await window.solana.connect()
+          phantomResponse = await phantom.connect()
           publicKeyStr = phantomResponse.publicKey.toString()
           walletAddress = publicKeyStr
           break
+        }
 
-        case 'solflare':
-          if (!window.solflare) {
+        case 'solflare': {
+          const solflare = getSolflareWallet()
+          if (!solflare) {
             window.open('https://solflare.com/', '_blank')
             throw new Error('Solflare wallet not found. Please install Solflare.')
           }
 
-          solflareResponse = await window.solflare.connect()
+          solflareResponse = await solflare.connect()
           publicKeyStr = solflareResponse.publicKey.toString()
           walletAddress = publicKeyStr
           break
+        }
 
-        case 'backpack':
-          if (!window.backpack) {
+        case 'backpack': {
+          const backpack = getBackpackWallet()
+          if (!backpack) {
             window.open('https://backpack.app/', '_blank')
             throw new Error('Backpack wallet not found. Please install Backpack.')
           }
 
-          backpackResponse = await window.backpack.connect()
+          backpackResponse = await backpack.connect()
           publicKeyStr = backpackResponse.publicKey.toString()
           walletAddress = publicKeyStr
           break
+        }
 
         default:
           throw new Error('Unsupported wallet type')
@@ -135,10 +149,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('walletAddress', walletAddress)
 
       // Listen for account changes (Phantom specific)
-      if (type === 'phantom' && window.solana) {
-        window.solana.on('accountChanged', () => {
-          disconnect()
-        })
+      if (type === 'phantom') {
+        const phantom = getPhantomWallet()
+        if (phantom) {
+          phantom.on('accountChanged', () => {
+            disconnect()
+          })
+        }
       }
     } catch (error) {
       console.error('Failed to connect wallet:', error)
@@ -149,12 +166,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const disconnect = async () => {
     try {
       // Disconnect from the actual wallet
-      if (walletType === 'phantom' && window.solana) {
-        await window.solana.disconnect()
-      } else if (walletType === 'solflare' && window.solflare) {
-        await window.solflare.disconnect()
-      } else if (walletType === 'backpack' && window.backpack) {
-        await window.backpack.disconnect()
+      if (walletType === 'phantom') {
+        const phantom = getPhantomWallet()
+        if (phantom) await phantom.disconnect()
+      } else if (walletType === 'solflare') {
+        const solflare = getSolflareWallet()
+        if (solflare) await solflare.disconnect()
+      } else if (walletType === 'backpack') {
+        const backpack = getBackpackWallet()
+        if (backpack) await backpack.disconnect()
       }
     } catch (error) {
       console.error('Error disconnecting from wallet:', error)
