@@ -38,36 +38,36 @@ export function SwapInterface() {
 
   useEffect(() => {
     if (fromAmount && Number(fromAmount) > 0 && fromToken && toToken) {
-      const calculateSwap = async () => {
-        if (!fromToken || !toToken) return
-    
-        setLoading(true)
-        try {
-          // Mock swap calculation
-          const mockRate = Math.random() * 10 + 0.1
-          const outputAmount = Number(fromAmount) * mockRate
-          
-          setToAmount(outputAmount.toFixed(6))
-          setSwapData({
-            outputAmount,
-            rate: mockRate,
-            minimumReceived: outputAmount * 0.995,
-            route: "Jupiter",
-          })
-        } catch (error) {
-          console.error("Error calculating swap:", error)
-          toast.error("Failed to calculate swap rate")
-        } finally {
-          setLoading(false)
-        }
-      }
-      
       calculateSwap()
     } else {
       setToAmount("")
       setSwapData(null)
     }
   }, [fromAmount, fromToken, toToken])
+
+  const calculateSwap = async () => {
+    if (!fromToken || !toToken) return
+
+    setLoading(true)
+    try {
+      // Mock swap calculation
+      const mockRate = Math.random() * 10 + 0.1
+      const outputAmount = Number(fromAmount) * mockRate
+      
+      setToAmount(outputAmount.toFixed(6))
+      setSwapData({
+        outputAmount,
+        rate: mockRate,
+        minimumReceived: outputAmount * 0.995,
+        route: "Jupiter",
+      })
+    } catch (error) {
+      console.error("Error calculating swap:", error)
+      toast.error("Failed to calculate swap rate")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSwapTokens = () => {
     const tempTokenMint = fromTokenMint

@@ -6,14 +6,13 @@ export class TokenService {
 
     static async initialize() {
         if (this.isInitialized) {
-            console.log('TokenService already initialized with', this.tokenList.length, 'tokens');
+         
             return;
         }
  
-        console.log('Initializing TokenService...');
+     
         try {
-            // Lấy danh sách token từ Solana Devnet
-            console.log('Fetching token list from CDN...');
+         
             const response = await fetch('https://cdn.jsdelivr.net/gh/solana-labs/token-list@main/src/tokens/solana.tokenlist.json');
             const data = await response.json();
             
@@ -22,12 +21,11 @@ export class TokenService {
                 token.chainId === 103 // 103 là chainId của Solana Devnet
             ) : [];
             
-            console.log('Filtered token list for devnet (chainId 103):', this.tokenList.length, 'tokens');
-            this.isInitialized = true;
+        
         } catch (error) {
             console.error('Failed to initialize TokenService:', error);
             // Fallback to common tokens on devnet
-            console.log('Using fallback token list');
+
             this.tokenList = [
                 {
                     chainId: 103, // Devnet
@@ -58,7 +56,7 @@ export class TokenService {
         }
 
         const tokenInfo = this.tokenList.find(token => token.address === mintAddress);
-        console.log(`TokenInfo for ${mintAddress}:`, tokenInfo ? `Found (${tokenInfo.symbol})` : 'Not found');
+      
         return tokenInfo;
     }
 
@@ -67,8 +65,7 @@ export class TokenService {
         if (!this.isInitialized) {
             await this.initialize();
         }
-        
-        console.log('getAllTokens returning', this.tokenList.length, 'tokens');
+    
         return this.tokenList;
     }
 }

@@ -232,7 +232,10 @@ export class PoolService {
             const modifyComputeUnitIx = ComputeBudgetProgram.setComputeUnitLimit({
                 units: 800_000
             });
-
+            
+            // Kiểm tra xem token có Transfer Hook không
+            const token0HasTransferHook = await this.hasTransferHookExtension(this.connection, token0Mint);
+            const token1HasTransferHook = await this.hasTransferHookExtension(this.connection, token1Mint);
             
             // Tính PDA cho whitelist
             const [whitelistPDA_token0] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -252,7 +255,12 @@ export class PoolService {
                 [Buffer.from("extra-account-metas"), token1Mint.toBuffer()],
                 TRANSFER_HOOK_PROGRAM_ID
             );
-        
+            
+            // Kiểm tra xem các account whitelist có tồn tại không
+            const whitelistPDA_token0_exists = await this.accountExists(this.connection, whitelistPDA_token0);
+            const extraAccountMetaListPDA_token0_exists = await this.accountExists(this.connection, extraAccountMetaListPDA_token0);
+            const whitelistPDA_token1_exists = await this.accountExists(this.connection, whitelistPDA_token1);
+            const extraAccountMetaListPDA_token1_exists = await this.accountExists(this.connection, extraAccountMetaListPDA_token1);
             
             // Luôn thêm các tài khoản transfer hook cho cả hai token bất kể có transfer hook hay không
             // Điều này đảm bảo tất cả các tài khoản cần thiết được đưa vào
@@ -277,6 +285,7 @@ export class PoolService {
             
             // Kiểm tra createPoolFee
             const createPoolFee = new PublicKey("2p3CiCssv21WeTyQDVZZL66UyXByJZd4oqrPyV7tz3qu");
+            const createPoolFeeExists = await this.accountExists(this.connection, createPoolFee);
             
             // Tạo instruction để khởi tạo pool
             const initializeIx = await this.program.methods

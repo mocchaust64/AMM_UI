@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 "use client"
 
 import { useState, useEffect } from "react"
@@ -22,7 +21,7 @@ import { toast } from "sonner"
 import { TokenSelect } from "@/components/TokenSelect"
 import { useWalletTokens } from "@/hooks/useWalletTokens"
 import { usePoolCreation } from "@/hooks/usePoolCreation"
-import { Check, ExternalLink } from "lucide-react"
+import { AlertCircle, Check, ExternalLink } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface CreatePoolDialogProps {
@@ -39,12 +38,16 @@ interface SuccessDialogProps {
 }
 
 // Định nghĩa một component để hiển thị thông báo thành công
-// eslint-disable-next-line no-unused-vars
 function SuccessDialog({ open, onOpenChange, txid, poolAddress, lpMintAddress }: SuccessDialogProps) {
   // Dựa vào môi trường để tạo link phù hợp (ở đây dùng devnet)
   const solscanUrl = `https://solscan.io/tx/${txid}?cluster=devnet`;
   const poolUrl = `https://solscan.io/account/${poolAddress}?cluster=devnet`;
   const lpMintUrl = `https://solscan.io/token/${lpMintAddress}?cluster=devnet`;
+
+  // Hàm rút gọn địa chỉ để hiển thị
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-6)}`;
+  };
 
   // Hàm sao chép vào clipboard
   const copyToClipboard = (text: string, type: string) => {
@@ -54,7 +57,6 @@ function SuccessDialog({ open, onOpenChange, txid, poolAddress, lpMintAddress }:
       },
       (err) => {
         toast.error('Could not copy text');
-        // eslint-disable-next-line no-console
         console.error('Could not copy text: ', err);
       }
     );
@@ -203,12 +205,11 @@ function SuccessDialog({ open, onOpenChange, txid, poolAddress, lpMintAddress }:
   );
 }
 
-// eslint-disable-next-line no-unused-vars
 export function CreatePoolDialog({ open, onOpenChange }: CreatePoolDialogProps) {
   const { connected: isConnected } = useWallet()
   const { setVisible } = useWalletModal()
-  const { tokens } = useWalletTokens()
-  const { createPool, error: poolCreationError } = usePoolCreation()
+  const { tokens, loading: tokensLoading } = useWalletTokens()
+  const { createPool, loading: poolCreationLoading, error: poolCreationError } = usePoolCreation()
 
   const [poolType, setPoolType] = useState<"standard" | "custom">("standard")
   const [tokenAMint, setTokenAMint] = useState("")
@@ -238,7 +239,6 @@ export function CreatePoolDialog({ open, onOpenChange }: CreatePoolDialogProps) 
     try {
       setVisible(true)
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error('Connect wallet error:', error)
       toast.error("Failed to open wallet selector. Please try again.")
     }
@@ -295,7 +295,6 @@ export function CreatePoolDialog({ open, onOpenChange }: CreatePoolDialogProps) 
       setSuccessDialogOpen(true)
       
     } catch (error: any) {
-      // eslint-disable-next-line no-console
       console.error("Error creating pool:", error)
       toast.error(error.message || "Failed to create pool")
     } finally {

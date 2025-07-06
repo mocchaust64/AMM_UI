@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { RaydiumCpSwap } from "../../../idl/types/raydium_cp_swap";
 import idl from "../../../idl/raydium_cp_swap.json";
+import { createAssociatedTokenAccountInstruction } from '@solana/spl-token';
 
 // Đường dẫn đến file keypair của server (cần được tạo trước)
 const SERVER_KEYPAIR_PATH = process.env.SERVER_KEYPAIR_PATH || path.join(process.cwd(), 'server-keypair.json');
@@ -29,6 +30,48 @@ function getServerKeypair(): Keypair {
   }
 }
 
+// Hàm kiểm tra account tồn tại
+async function accountExists(connection: Connection, publicKey: PublicKey): Promise<boolean> {
+  try {
+    const account = await connection.getAccountInfo(publicKey);
+    return account !== null;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Hàm kiểm tra token có Transfer Hook không
+async function hasTransferHookExtension(connection: Connection, mintAddress: PublicKey): Promise<boolean> {
+  try {
+    // Trước tiên kiểm tra bằng cách xem extension data trực tiếp từ mint
+    const mintInfo = await connection.getAccountInfo(mintAddress);
+    if (!mintInfo) {
+      return false;
+    }
+    
+    // Cách kiểm tra chính xác hơn - tìm kiếm các PDA liên quan
+    const [extraAccountMetaListPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("extra-account-metas"), mintAddress.toBuffer()],
+      TRANSFER_HOOK_PROGRAM_ID
+    );
+    
+    const [whitelistPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("white_list"), mintAddress.toBuffer()],
+      TRANSFER_HOOK_PROGRAM_ID
+    );
+    
+    // Kiểm tra cả hai PDA
+    const extraAccountExists = await accountExists(connection, extraAccountMetaListPDA);
+    const whitelistExists = await accountExists(connection, whitelistPDA);
+    
+    // Nếu một trong hai tồn tại, token có thể có transfer hook
+    return extraAccountExists || whitelistExists;
+  } catch (error) {
+    console.error(`Lỗi khi kiểm tra Transfer Hook cho ${mintAddress.toString()}:`, error);
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Parse request body
@@ -42,6 +85,7 @@ export async function POST(request: NextRequest) {
       initAmount1,
       creatorPublicKey,
       ammConfigAddress,
+      creatorLpTokenAddress,
     } = body;
 
     // Validate required fields
@@ -147,6 +191,26 @@ export async function POST(request: NextRequest) {
           [Buffer.from("extra-account-metas"), new PublicKey(token1Mint).toBuffer()],
           TRANSFER_HOOK_PROGRAM_ID
       );
+      
+      // Kiểm tra xem token có Transfer Hook không
+      const token0HasTransferHook = await hasTransferHookExtension(connection, new PublicKey(token0Mint));
+      const token1HasTransferHook = await hasTransferHookExtension(connection, new PublicKey(token1Mint));
+
+      // Tạo LP token address
+      let creatorLpTokenAddressPubkey;
+
+      // Dù client có gửi giá trị này hay không, server luôn tính toán lại
+      const serverCalculatedLpTokenAddress = PublicKey.findProgramAddressSync(
+          [
+              new PublicKey(creatorPublicKey).toBuffer(),
+              TOKEN_PROGRAM_ID.toBuffer(),
+              lpMintAddress.toBuffer(),
+          ],
+          ASSOCIATED_TOKEN_PROGRAM_ID
+      )[0];
+
+      // Sử dụng giá trị đã tính toán ở server
+      creatorLpTokenAddressPubkey = serverCalculatedLpTokenAddress;
 
       // Luôn thêm tất cả các tài khoản cho cả hai token, dù có transfer hook hay không
       const remainingAccounts = [
@@ -159,6 +223,9 @@ export async function POST(request: NextRequest) {
         { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
         { pubkey: extraAccountMetaListPDA_token1, isWritable: false, isSigner: false },
         { pubkey: whitelistPDA_token1, isWritable: true, isSigner: false },
+        
+        // Tài khoản LP token (tính theo cách mới)
+        { pubkey: creatorLpTokenAddressPubkey, isWritable: true, isSigner: false },
         
         // Wallet với quyền ký
         { pubkey: new PublicKey(creatorPublicKey), isWritable: true, isSigner: true },
@@ -181,6 +248,7 @@ export async function POST(request: NextRequest) {
           lpMint: lpMintAddress,
           creatorToken0: new PublicKey(token0Account),
           creatorToken1: new PublicKey(token1Account),
+          creatorLpToken: creatorLpTokenAddressPubkey,
           token0Vault: vault0,
           token1Vault: vault1,
           observationState: observationAddress,
@@ -218,7 +286,8 @@ export async function POST(request: NextRequest) {
         poolAddress: poolKeypair.publicKey.toString(),
         lpMintAddress: lpMintAddress.toString(),
         vault0: vault0.toString(),
-        vault1: vault1.toString()
+        vault1: vault1.toString(),
+        creatorLpTokenAddress: creatorLpTokenAddressPubkey.toString()
       });
     } catch (txError: any) {
       console.error('Error creating pool transaction:', txError);

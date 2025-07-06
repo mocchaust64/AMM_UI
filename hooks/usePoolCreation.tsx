@@ -5,7 +5,11 @@ import * as anchor from '@coral-xyz/anchor';
 import { RaydiumCpSwap } from "../idl/types/raydium_cp_swap";
 import idl from "../idl/raydium_cp_swap.json";
 import { toast } from '@/components/ui/use-toast';
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { createAssociatedTokenAccountInstruction } from '@solana/spl-token';
+
+// Constant
+const TRANSFER_HOOK_PROGRAM_ID = new PublicKey("12BZr6af3s7qf7GGmhBvMd46DWmVNhHfXmCwftfMk1mZ");
 
 // Hàm kiểm tra chuỗi có phải định dạng base58 hợp lệ
 const isValidBase58 = (value: string): boolean => {
@@ -36,6 +40,34 @@ const extractMissingAccountError = (logs: string[] | undefined): string | null =
     }
     return null;
 };
+
+// Hàm kiểm tra token có transfer hook không
+async function hasTransferHook(
+    connection: anchor.web3.Connection, 
+    mintAddress: PublicKey
+): Promise<boolean> {
+    try {
+        // Kiểm tra PDA
+        const [extraAccountMetaListPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("extra-account-metas"), mintAddress.toBuffer()],
+            TRANSFER_HOOK_PROGRAM_ID
+        );
+        
+        const [whitelistPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("white_list"), mintAddress.toBuffer()],
+            TRANSFER_HOOK_PROGRAM_ID
+        );
+        
+        // Kiểm tra xem các PDA có tồn tại không
+        const extraAccountMetaListInfo = await connection.getAccountInfo(extraAccountMetaListPDA);
+        const whitelistInfo = await connection.getAccountInfo(whitelistPDA);
+        
+        return !!(extraAccountMetaListInfo || whitelistInfo);
+    } catch (error) {
+        console.error('Error checking for transfer hook:', error);
+        return false;
+    }
+}
 
 // Hàm so sánh hai PublicKey
 function comparePublicKeys(a: PublicKey, b: PublicKey): number {
@@ -156,6 +188,25 @@ export function usePoolCreation() {
                 ],
                 ASSOCIATED_TOKEN_PROGRAM_ID
             )[0];
+            
+            // Tính trước các PDA của transfer hook để kiểm tra
+            const [whitelistPDA_token0] = PublicKey.findProgramAddressSync(
+                [Buffer.from("white_list"), finalToken0Mint.toBuffer()],
+                TRANSFER_HOOK_PROGRAM_ID
+            );
+            const [extraAccountMetaListPDA_token0] = PublicKey.findProgramAddressSync(
+                [Buffer.from("extra-account-metas"), finalToken0Mint.toBuffer()],
+                TRANSFER_HOOK_PROGRAM_ID
+            );
+            
+            const [whitelistPDA_token1] = PublicKey.findProgramAddressSync(
+                [Buffer.from("white_list"), finalToken1Mint.toBuffer()],
+                TRANSFER_HOOK_PROGRAM_ID
+            );
+            const [extraAccountMetaListPDA_token1] = PublicKey.findProgramAddressSync(
+                [Buffer.from("extra-account-metas"), finalToken1Mint.toBuffer()],
+                TRANSFER_HOOK_PROGRAM_ID
+            );
 
             // Gọi API để tạo và ký transaction với pool keypair
             const response = await fetch('/api/create-pool', {
@@ -186,6 +237,20 @@ export function usePoolCreation() {
             if (!apiResponse.success || !apiResponse.serializedTransaction) {
                 throw new Error('API returned an invalid response');
             }
+
+            // Tính toán lại LP token address với pool address thực tế từ API response
+            const actualPoolAddress = new PublicKey(apiResponse.poolAddress);
+            const actualLpMintAddress = new PublicKey(apiResponse.lpMintAddress);
+
+            // Tính LP token address theo cùng một cách với server
+            const actualCreatorLpTokenAddress = PublicKey.findProgramAddressSync(
+                [
+                    publicKey.toBuffer(),
+                    TOKEN_PROGRAM_ID.toBuffer(),
+                    actualLpMintAddress.toBuffer(),
+                ],
+                ASSOCIATED_TOKEN_PROGRAM_ID
+            )[0];
                 
             // Deserialize transaction từ base64
             const serializedTransaction = Buffer.from(apiResponse.serializedTransaction, 'base64');
