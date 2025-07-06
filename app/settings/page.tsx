@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { useSettings } from "@/lib/contexts/settings-context"
-import { useWallet } from "@/lib/contexts/wallet-context"
+import { useWallet } from "@solana/wallet-adapter-react"
+import { useWalletModal } from "@solana/wallet-adapter-react-ui"
 import { User, Shield, Palette, Globe, Wallet, Bell, Download, Trash2, AlertTriangle, Save } from "lucide-react"
 import { toast } from "sonner"
 
@@ -35,7 +36,8 @@ export default function SettingsPage() {
     exportSettings,
   } = useSettings()
 
-  const { isConnected, disconnect } = useWallet()
+  const { connected, disconnect, wallet } = useWallet()
+  const { setVisible } = useWalletModal()
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   const handleSaveProfile = () => {
@@ -49,6 +51,10 @@ export default function SettingsPage() {
   const handleDisconnectWallet = () => {
     disconnect()
     toast.success("Wallet disconnected")
+  }
+
+  const handleConnectWallet = () => {
+    setVisible(true)
   }
 
   const handleResetSettings = () => {
@@ -219,14 +225,14 @@ export default function SettingsPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {isConnected ? (
+                    {connected ? (
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
                             <Wallet className="h-4 w-4 text-white" />
                           </div>
                           <div>
-                            <h4 className="font-medium">Phantom Wallet</h4>
+                            <h4 className="font-medium">{wallet?.adapter.name || 'Unknown Wallet'}</h4>
                             <p className="text-sm text-muted-foreground">Connected</p>
                           </div>
                         </div>
@@ -240,7 +246,9 @@ export default function SettingsPage() {
                     ) : (
                       <div className="text-center py-8">
                         <p className="text-muted-foreground mb-4">No wallet connected</p>
-                        <Button variant="outline">Connect Wallet</Button>
+                        <Button variant="outline" onClick={handleConnectWallet}>
+                          Connect Wallet
+                        </Button>
                       </div>
                     )}
                   </CardContent>

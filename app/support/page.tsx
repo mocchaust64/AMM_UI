@@ -46,7 +46,7 @@ export default function SupportPage() {
     {
       question: "Is my money safe?",
       answer:
-        "SolanaFi is non-custodial, meaning you always control your funds. We never have access to your private keys. However, DeFi involves smart contract risks, so only invest what you can afford to lose.",
+        "MoonDex is non-custodial, meaning you always control your funds. We never have access to your private keys. However, DeFi involves smart contract risks, so only invest what you can afford to lose.",
     },
     {
       question: "How do I report a bug?",
@@ -202,7 +202,7 @@ export default function SupportPage() {
                         <Users className="h-5 w-5 text-purple-500" />
                         <div>
                           <h4 className="font-medium">Telegram</h4>
-                          <p className="text-sm text-muted-foreground">@SolanaFiSupport</p>
+                          <p className="text-sm text-muted-foreground">@MoonDexSupport</p>
                         </div>
                         <Button size="sm" variant="outline" className="ml-auto bg-transparent">
                           <ExternalLink className="h-4 w-4" />

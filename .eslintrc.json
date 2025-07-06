@@ -1,7 +1,24 @@
 {
   "extends": "next/core-web-vitals",
   "rules": {
-    "no-unused-vars": "error",
-    "semi": ["error", "always"]
-  }
+    "no-unused-vars": ["error", { 
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_",
+      "ignoreRestSiblings": true
+    }],
+    "semi": "off",
+    "no-undef": "error",
+    "no-console": ["error", { "allow": ["warn", "error"] }],
+    "react-hooks/exhaustive-deps": "error",
+    "@next/next/no-img-element": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["test/**/*.ts", "test/**/*.tsx"],
+      "rules": {
+        "no-unused-vars": "off",
+        "no-console": "off"
+      }
+    }
+  ]
 } 

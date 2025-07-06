@@ -39,7 +39,7 @@ export function Sidebar() {
     <aside className="w-64 border-r bg-background/50 backdrop-blur">
       <div className="flex h-16 items-center gap-2 border-b px-6">
         <Wallet className="h-6 w-6 text-primary" />
-        <span className="font-bold text-xl">SolanaFi</span>
+        <span className="font-bold text-xl">MoonDex</span>
       </div>
 
       <div className="p-4">

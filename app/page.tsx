@@ -1,10 +1,10 @@
-import { Header } from "@/components/layout/header"
-import { Sidebar } from "@/components/layout/sidebar"
-import { MetricsCard } from "@/components/metrics-card"
-import { StatsChart } from "@/components/stats-chart"
-import { VaultTable } from "@/components/vault-table"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Header } from "@/components/layout/header";
+import { Sidebar } from "@/components/layout/sidebar";
+import { MetricsCard } from "@/components/metrics-card";
+import { StatsChart } from "@/components/stats-chart";
+import { VaultTable } from "@/components/vault-table";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function DashboardPage() {
   return (

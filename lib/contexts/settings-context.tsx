@@ -133,7 +133,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   // Load settings from localStorage on mount
   useEffect(() => {
-    const savedSettings = localStorage.getItem("solanaFi-settings")
+    const savedSettings = localStorage.getItem("MoonDex-settings")
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings)
@@ -159,7 +159,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       appearance,
       advanced,
     }
-    localStorage.setItem("solanaFi-settings", JSON.stringify(settings))
+    localStorage.setItem("MoonDex-settings", JSON.stringify(settings))
   }, [profile, region, security, notifications, appearance, advanced])
 
   // Apply theme changes to document
@@ -220,7 +220,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setNotifications(defaultSettings.notifications)
     setAppearance(defaultSettings.appearance)
     setAdvanced(defaultSettings.advanced)
-    localStorage.removeItem("solanaFi-settings")
+    localStorage.removeItem("MoonDex-settings")
   }
 
   const exportSettings = () => {
@@ -238,7 +238,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `solanaFi-settings-${new Date().toISOString().split("T")[0]}.json`
+    a.download = `MoonDex-settings-${new Date().toISOString().split("T")[0]}.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)

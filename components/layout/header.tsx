@@ -6,13 +6,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChevronDown, Globe, Moon, Sun, Wallet, Copy, ExternalLink } from "lucide-react"
 import { useTheme } from "@/lib/contexts/theme-context"
 import { useLanguage } from "@/lib/contexts/language-context"
-import { useWallet } from "@/lib/contexts/wallet-context"
+import { useWallet } from "@solana/wallet-adapter-react"
+import { useWalletModal } from "@solana/wallet-adapter-react-ui"
 import { toast } from "sonner"
 
 export function Header() {
   const { theme, setTheme } = useTheme()
   const { language, setLanguage, t } = useLanguage()
-  const { isConnected, address, walletType, connect, disconnect } = useWallet()
+  const { connected, publicKey, disconnect } = useWallet()
+  const { setVisible } = useWalletModal()
+
+  const address = publicKey?.toBase58()
 
   const handleCopyAddress = () => {
     if (address) {
@@ -21,12 +25,11 @@ export function Header() {
     }
   }
 
-  const handleConnectWallet = async (type: "phantom" | "solflare" | "backpack") => {
+  const handleConnectWallet = async () => {
     try {
-      await connect(type)
-      toast.success(`Connected to ${type.charAt(0).toUpperCase() + type.slice(1)}!`)
+      setVisible(true)
     } catch (error) {
-      toast.error("Failed to connect wallet")
+      toast.error("Failed to open wallet selector")
     }
   }
 
@@ -71,12 +74,12 @@ export function Header() {
         </Button>
 
         {/* Wallet Connection */}
-        {isConnected ? (
+        {connected && address ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2 bg-transparent">
                 <Wallet className="h-4 w-4" />
-                {address?.slice(0, 4)}...{address?.slice(-4)}
+                {address.slice(0, 4)}...{address.slice(-4)}
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -93,19 +96,10 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="gap-2">
-                <Wallet className="h-4 w-4" />
-                {t("wallet.connect")}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleConnectWallet("phantom")}>Phantom</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleConnectWallet("solflare")}>Solflare</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleConnectWallet("backpack")}>Backpack</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button className="gap-2" onClick={handleConnectWallet}>
+            <Wallet className="h-4 w-4" />
+            {t("wallet.connect")}
+          </Button>
         )}
       </div>
     </header>

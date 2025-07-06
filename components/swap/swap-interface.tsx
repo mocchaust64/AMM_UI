@@ -7,28 +7,61 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { ArrowUpDown, Settings, Info } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { getSwapRate } from "@/lib/api/price-api"
 import { useLanguage } from "@/lib/contexts/language-context"
 import { toast } from "sonner"
-
-const tokens = [
-  { id: "solana", symbol: "SOL", name: "Solana", icon: "/placeholder.svg?height=20&width=20" },
-  { id: "usd-coin", symbol: "USDC", name: "USD Coin", icon: "/placeholder.svg?height=20&width=20" },
-  { id: "raydium", symbol: "RAY", name: "Raydium", icon: "/placeholder.svg?height=20&width=20" },
-]
+import { TokenSelect } from "@/components/TokenSelect"
+import { useWalletTokens } from "@/hooks/useWalletTokens"
 
 export function SwapInterface() {
   const { t } = useLanguage()
+  const { tokens } = useWalletTokens()
   const [fromAmount, setFromAmount] = useState("")
   const [toAmount, setToAmount] = useState("")
-  const [fromToken, setFromToken] = useState(tokens[0])
-  const [toToken, setToToken] = useState(tokens[1])
+  const [fromTokenMint, setFromTokenMint] = useState("")
+  const [toTokenMint, setToTokenMint] = useState("")
   const [swapData, setSwapData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
+  // Get selected tokens from mints
+  const fromToken = tokens.find(token => token.mint === fromTokenMint)
+  const toToken = tokens.find(token => token.mint === toTokenMint)
+
   useEffect(() => {
-    if (fromAmount && Number(fromAmount) > 0) {
+    // Set default tokens when tokens are loaded
+    if (tokens.length > 0 && !fromTokenMint) {
+      setFromTokenMint(tokens[0]?.mint)
+    }
+    if (tokens.length > 1 && !toTokenMint) {
+      setToTokenMint(tokens[1]?.mint)
+    }
+  }, [tokens, fromTokenMint, toTokenMint])
+
+  useEffect(() => {
+    if (fromAmount && Number(fromAmount) > 0 && fromToken && toToken) {
+      const calculateSwap = async () => {
+        if (!fromToken || !toToken) return
+    
+        setLoading(true)
+        try {
+          // Mock swap calculation
+          const mockRate = Math.random() * 10 + 0.1
+          const outputAmount = Number(fromAmount) * mockRate
+          
+          setToAmount(outputAmount.toFixed(6))
+          setSwapData({
+            outputAmount,
+            rate: mockRate,
+            minimumReceived: outputAmount * 0.995,
+            route: "Jupiter",
+          })
+        } catch (error) {
+          console.error("Error calculating swap:", error)
+          toast.error("Failed to calculate swap rate")
+        } finally {
+          setLoading(false)
+        }
+      }
+      
       calculateSwap()
     } else {
       setToAmount("")
@@ -36,26 +69,10 @@ export function SwapInterface() {
     }
   }, [fromAmount, fromToken, toToken])
 
-  const calculateSwap = async () => {
-    setLoading(true)
-    try {
-      const data = await getSwapRate(fromToken.id, toToken.id, Number(fromAmount))
-      if (data) {
-        setToAmount(data.outputAmount.toFixed(6))
-        setSwapData(data)
-      }
-    } catch (error) {
-      console.error("Error calculating swap:", error)
-      toast.error("Failed to calculate swap rate")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleSwapTokens = () => {
-    const tempToken = fromToken
-    setFromToken(toToken)
-    setToToken(tempToken)
+    const tempTokenMint = fromTokenMint
+    setFromTokenMint(toTokenMint)
+    setToTokenMint(tempTokenMint)
     setFromAmount(toAmount)
     setToAmount(fromAmount)
   }
@@ -88,19 +105,19 @@ export function SwapInterface() {
                 type="number"
               />
             </div>
-            <Button variant="outline" className="gap-2 bg-transparent">
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={fromToken.icon || "/placeholder.svg"} />
-                <AvatarFallback>{fromToken.symbol}</AvatarFallback>
-              </Avatar>
-              {fromToken.symbol}
-            </Button>
+            <div className="w-32">
+              <TokenSelect 
+                value={fromTokenMint}
+                onChange={setFromTokenMint}
+                excludeToken={toTokenMint}
+              />
+            </div>
           </div>
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>
-              {t("swap.balance")}: 12.5 {fromToken.symbol}
+              {t("swap.balance")}: {fromToken?.balance.toLocaleString() || "0"} {fromToken?.symbol || ""}
             </span>
-            <span>~${(Number(fromAmount) * 100).toFixed(2)}</span>
+            <span>~${fromToken && Number(fromAmount) > 0 ? (Number(fromAmount) * 10).toFixed(2) : "0.00"}</span>
           </div>
         </div>
 
@@ -123,19 +140,19 @@ export function SwapInterface() {
                 readOnly
               />
             </div>
-            <Button variant="outline" className="gap-2 bg-transparent">
-              <Avatar className="h-5 w-5">
-                <AvatarImage src={toToken.icon || "/placeholder.svg"} />
-                <AvatarFallback>{toToken.symbol}</AvatarFallback>
-              </Avatar>
-              {toToken.symbol}
-            </Button>
+            <div className="w-32">
+              <TokenSelect 
+                value={toTokenMint}
+                onChange={setToTokenMint}
+                excludeToken={fromTokenMint}
+              />
+            </div>
           </div>
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>
-              {t("swap.balance")}: 0 {toToken.symbol}
+              {t("swap.balance")}: {toToken?.balance.toLocaleString() || "0"} {toToken?.symbol || ""}
             </span>
-            <span>~${(Number(toAmount) * 1).toFixed(2)}</span>
+            <span>~${toToken && Number(toAmount) > 0 ? (Number(toAmount) * 10).toFixed(2) : "0.00"}</span>
           </div>
         </div>
 
@@ -145,7 +162,7 @@ export function SwapInterface() {
             <div className="flex justify-between text-sm">
               <span>{t("swap.rate")}</span>
               <span>
-                1 {fromToken.symbol} = {swapData.rate.toFixed(4)} {toToken.symbol}
+                1 {fromToken?.symbol} = {swapData.rate.toFixed(4)} {toToken?.symbol}
               </span>
             </div>
             <div className="flex justify-between text-sm">
@@ -155,7 +172,7 @@ export function SwapInterface() {
             <div className="flex justify-between text-sm">
               <span>{t("swap.minimum")}</span>
               <span>
-                {swapData.minimumReceived.toFixed(6)} {toToken.symbol}
+                {swapData.minimumReceived.toFixed(6)} {toToken?.symbol}
               </span>
             </div>
             <div className="flex justify-between text-sm">
@@ -168,7 +185,12 @@ export function SwapInterface() {
           </div>
         )}
 
-        <Button className="w-full" size="lg" onClick={handleSwap} disabled={!fromAmount || !toAmount || loading}>
+        <Button 
+          className="w-full" 
+          size="lg" 
+          onClick={handleSwap} 
+          disabled={!fromAmount || !toAmount || loading || !fromToken || !toToken}
+        >
           {loading ? t("common.loading") : "Swap"}
         </Button>
       </CardContent>
