@@ -1,1 +1,1 @@
-export * from './TokenSelect' 
+export * from './TokenSelect'

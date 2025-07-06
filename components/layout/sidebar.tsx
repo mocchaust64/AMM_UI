@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   BarChart3,
   Globe,
@@ -15,20 +15,20 @@ import {
   PieChart,
   Search,
   Coins,
-} from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useLanguage } from "@/lib/contexts/language-context"
+} from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useLanguage } from '@/lib/contexts/language-context'
 
 const navigation = [
-  { name: "nav.dashboard", href: "/", icon: LayoutDashboard },
-  { name: "nav.swap", href: "/swap", icon: ArrowLeftRight },
-  { name: "nav.liquidity", href: "/liquidity", icon: Droplets },
-  { name: "nav.farming", href: "/farming", icon: TrendingUp },
-  { name: "nav.trading", href: "/trading", icon: BarChart3 },
-  { name: "nav.portfolio", href: "/portfolio", icon: PieChart },
-  { name: "nav.analytics", href: "/analytics", icon: Globe },
-  { name: "nav.tokens", href: "/tokens", icon: Coins },
+  { name: 'nav.dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'nav.swap', href: '/swap', icon: ArrowLeftRight },
+  { name: 'nav.liquidity', href: '/liquidity', icon: Droplets },
+  { name: 'nav.farming', href: '/farming', icon: TrendingUp },
+  { name: 'nav.trading', href: '/trading', icon: BarChart3 },
+  { name: 'nav.portfolio', href: '/portfolio', icon: PieChart },
+  { name: 'nav.analytics', href: '/analytics', icon: Globe },
+  { name: 'nav.tokens', href: '/tokens', icon: Coins },
 ]
 
 export function Sidebar() {
@@ -50,11 +50,14 @@ export function Sidebar() {
       </div>
 
       <nav className="space-y-1 px-2">
-        {navigation.map((item) => {
+        {navigation.map(item => {
           const isActive = pathname === item.href
           return (
             <Link key={item.name} href={item.href}>
-              <Button variant={isActive ? "secondary" : "ghost"} className="w-full justify-start gap-3">
+              <Button
+                variant={isActive ? 'secondary' : 'ghost'}
+                className="w-full justify-start gap-3"
+              >
                 <item.icon className="h-4 w-4" />
                 {t(item.name)}
               </Button>
@@ -68,13 +71,13 @@ export function Sidebar() {
           <Link href="/support">
             <Button variant="ghost" className="w-full justify-start gap-3">
               <LifeBuoy className="h-4 w-4" />
-              {t("nav.support")}
+              {t('nav.support')}
             </Button>
           </Link>
           <Link href="/settings">
             <Button variant="ghost" className="w-full justify-start gap-3">
               <Settings className="h-4 w-4" />
-              {t("nav.settings")}
+              {t('nav.settings')}
             </Button>
           </Link>
         </div>

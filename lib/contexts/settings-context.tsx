@@ -1,13 +1,13 @@
-"use client"
+'use client'
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import type React from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 
-export type Theme = "light" | "dark" | "system"
-export type Language = "en" | "vi" | "zh"
-export type Currency = "usd" | "eur" | "jpy"
-export type NumberFormat = "standard" | "compact" | "scientific"
-export type AccentColor = "blue" | "green" | "purple" | "orange" | "red"
+export type Theme = 'light' | 'dark' | 'system'
+export type Language = 'en' | 'vi' | 'zh'
+export type Currency = 'usd' | 'eur' | 'jpy'
+export type NumberFormat = 'standard' | 'compact' | 'scientific'
+export type AccentColor = 'blue' | 'green' | 'purple' | 'orange' | 'red'
 
 interface ProfileSettings {
   username: string
@@ -77,14 +77,14 @@ interface SettingsContextType {
 
 const defaultSettings = {
   profile: {
-    username: "",
-    email: "",
-    bio: "",
+    username: '',
+    email: '',
+    bio: '',
   },
   region: {
-    language: "en" as Language,
-    currency: "usd" as Currency,
-    timezone: "utc",
+    language: 'en' as Language,
+    currency: 'usd' as Currency,
+    timezone: 'utc',
   },
   security: {
     transactionConfirmation: true,
@@ -102,16 +102,16 @@ const defaultSettings = {
     emailNotifications: false,
   },
   appearance: {
-    theme: "dark" as Theme,
-    accentColor: "blue" as AccentColor,
+    theme: 'dark' as Theme,
+    accentColor: 'blue' as AccentColor,
     compactMode: false,
     showAnimations: true,
-    numberFormat: "standard" as NumberFormat,
+    numberFormat: 'standard' as NumberFormat,
     decimalPlaces: 6,
     showUsdValues: true,
   },
   advanced: {
-    rpcEndpoint: "mainnet",
+    rpcEndpoint: 'mainnet',
     slippageTolerance: 1.0,
     transactionDeadline: 20,
     expertMode: false,
@@ -127,24 +127,26 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<ProfileSettings>(defaultSettings.profile)
   const [region, setRegion] = useState<RegionSettings>(defaultSettings.region)
   const [security, setSecurity] = useState<SecuritySettings>(defaultSettings.security)
-  const [notifications, setNotifications] = useState<NotificationSettings>(defaultSettings.notifications)
+  const [notifications, setNotifications] = useState<NotificationSettings>(
+    defaultSettings.notifications
+  )
   const [appearance, setAppearance] = useState<AppearanceSettings>(defaultSettings.appearance)
   const [advanced, setAdvanced] = useState<AdvancedSettings>(defaultSettings.advanced)
 
   // Load settings from localStorage on mount
   useEffect(() => {
-    const savedSettings = localStorage.getItem("MoonDex-settings")
+    const savedSettings = localStorage.getItem('MoonDex-settings')
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings)
-        setProfile((prev) => ({ ...prev, ...parsed.profile }))
-        setRegion((prev) => ({ ...prev, ...parsed.region }))
-        setSecurity((prev) => ({ ...prev, ...parsed.security }))
-        setNotifications((prev) => ({ ...prev, ...parsed.notifications }))
-        setAppearance((prev) => ({ ...prev, ...parsed.appearance }))
-        setAdvanced((prev) => ({ ...prev, ...parsed.advanced }))
+        setProfile(prev => ({ ...prev, ...parsed.profile }))
+        setRegion(prev => ({ ...prev, ...parsed.region }))
+        setSecurity(prev => ({ ...prev, ...parsed.security }))
+        setNotifications(prev => ({ ...prev, ...parsed.notifications }))
+        setAppearance(prev => ({ ...prev, ...parsed.appearance }))
+        setAdvanced(prev => ({ ...prev, ...parsed.advanced }))
       } catch (error) {
-        console.error("Failed to load settings:", error)
+        console.error('Failed to load settings:', error)
       }
     }
   }, [])
@@ -159,58 +161,60 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       appearance,
       advanced,
     }
-    localStorage.setItem("MoonDex-settings", JSON.stringify(settings))
+    localStorage.setItem('MoonDex-settings', JSON.stringify(settings))
   }, [profile, region, security, notifications, appearance, advanced])
 
   // Apply theme changes to document
   useEffect(() => {
     const root = document.documentElement
-    root.classList.remove("light", "dark")
+    root.classList.remove('light', 'dark')
 
-    if (appearance.theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+    if (appearance.theme === 'system') {
+      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light'
       root.classList.add(systemTheme)
     } else {
       root.classList.add(appearance.theme)
     }
 
     // Apply accent color
-    root.style.setProperty("--primary", getAccentColorValue(appearance.accentColor))
+    root.style.setProperty('--primary', getAccentColorValue(appearance.accentColor))
   }, [appearance.theme, appearance.accentColor])
 
   const getAccentColorValue = (color: AccentColor): string => {
     const colors = {
-      blue: "217 91% 60%",
-      green: "142 76% 36%",
-      purple: "262 83% 58%",
-      orange: "25 95% 53%",
-      red: "0 84% 60%",
+      blue: '217 91% 60%',
+      green: '142 76% 36%',
+      purple: '262 83% 58%',
+      orange: '25 95% 53%',
+      red: '0 84% 60%',
     }
     return colors[color]
   }
 
   const updateProfile = (newProfile: Partial<ProfileSettings>) => {
-    setProfile((prev) => ({ ...prev, ...newProfile }))
+    setProfile(prev => ({ ...prev, ...newProfile }))
   }
 
   const updateRegion = (newRegion: Partial<RegionSettings>) => {
-    setRegion((prev) => ({ ...prev, ...newRegion }))
+    setRegion(prev => ({ ...prev, ...newRegion }))
   }
 
   const updateSecurity = (newSecurity: Partial<SecuritySettings>) => {
-    setSecurity((prev) => ({ ...prev, ...newSecurity }))
+    setSecurity(prev => ({ ...prev, ...newSecurity }))
   }
 
   const updateNotifications = (newNotifications: Partial<NotificationSettings>) => {
-    setNotifications((prev) => ({ ...prev, ...newNotifications }))
+    setNotifications(prev => ({ ...prev, ...newNotifications }))
   }
 
   const updateAppearance = (newAppearance: Partial<AppearanceSettings>) => {
-    setAppearance((prev) => ({ ...prev, ...newAppearance }))
+    setAppearance(prev => ({ ...prev, ...newAppearance }))
   }
 
   const updateAdvanced = (newAdvanced: Partial<AdvancedSettings>) => {
-    setAdvanced((prev) => ({ ...prev, ...newAdvanced }))
+    setAdvanced(prev => ({ ...prev, ...newAdvanced }))
   }
 
   const resetSettings = () => {
@@ -220,7 +224,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setNotifications(defaultSettings.notifications)
     setAppearance(defaultSettings.appearance)
     setAdvanced(defaultSettings.advanced)
-    localStorage.removeItem("MoonDex-settings")
+    localStorage.removeItem('MoonDex-settings')
   }
 
   const exportSettings = () => {
@@ -234,11 +238,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       exportDate: new Date().toISOString(),
     }
 
-    const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json" })
+    const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
+    const a = document.createElement('a')
     a.href = url
-    a.download = `MoonDex-settings-${new Date().toISOString().split("T")[0]}.json`
+    a.download = `MoonDex-settings-${new Date().toISOString().split('T')[0]}.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -272,7 +276,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 export const useSettings = () => {
   const context = useContext(SettingsContext)
   if (!context) {
-    throw new Error("useSettings must be used within a SettingsProvider")
+    throw new Error('useSettings must be used within a SettingsProvider')
   }
   return context
 }

@@ -1,50 +1,50 @@
-import { Header } from "@/components/layout/header"
-import { Sidebar } from "@/components/layout/sidebar"
-import { FarmCard } from "@/components/farming/farm-card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Zap } from "lucide-react"
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { FarmCard } from '@/components/farming/farm-card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Search, Zap } from 'lucide-react'
 
 export default function FarmingPage() {
   const farms = [
     {
-      name: "SOL-USDC LP",
+      name: 'SOL-USDC LP',
       tokens: [
-        { symbol: "SOL", icon: "/placeholder.svg?height=32&width=32" },
-        { symbol: "USDC", icon: "/placeholder.svg?height=32&width=32" },
+        { symbol: 'SOL', icon: '/placeholder.svg?height=32&width=32' },
+        { symbol: 'USDC', icon: '/placeholder.svg?height=32&width=32' },
       ],
-      apy: "45.2%",
-      tvl: "$1.2M",
-      rewards: ["NATIVE", "BONUS"],
-      timeLeft: "45 days",
-      userStaked: "$2,450.00",
-      pendingRewards: "$125.50",
+      apy: '45.2%',
+      tvl: '$1.2M',
+      rewards: ['NATIVE', 'BONUS'],
+      timeLeft: '45 days',
+      userStaked: '$2,450.00',
+      pendingRewards: '$125.50',
       isActive: true,
     },
     {
-      name: "RAY-SOL LP",
+      name: 'RAY-SOL LP',
       tokens: [
-        { symbol: "RAY", icon: "/placeholder.svg?height=32&width=32" },
-        { symbol: "SOL", icon: "/placeholder.svg?height=32&width=32" },
+        { symbol: 'RAY', icon: '/placeholder.svg?height=32&width=32' },
+        { symbol: 'SOL', icon: '/placeholder.svg?height=32&width=32' },
       ],
-      apy: "32.8%",
-      tvl: "$850K",
-      rewards: ["RAY"],
-      timeLeft: "12 days",
-      userStaked: "$1,200.00",
-      pendingRewards: "$45.20",
+      apy: '32.8%',
+      tvl: '$850K',
+      rewards: ['RAY'],
+      timeLeft: '12 days',
+      userStaked: '$1,200.00',
+      pendingRewards: '$45.20',
       isActive: true,
     },
     {
-      name: "NATIVE Staking",
-      tokens: [{ symbol: "NATIVE", icon: "/placeholder.svg?height=32&width=32" }],
-      apy: "28.5%",
-      tvl: "$2.8M",
-      rewards: ["NATIVE"],
-      timeLeft: "90 days",
-      userStaked: "$5,000.00",
-      pendingRewards: "$285.75",
+      name: 'NATIVE Staking',
+      tokens: [{ symbol: 'NATIVE', icon: '/placeholder.svg?height=32&width=32' }],
+      apy: '28.5%',
+      tvl: '$2.8M',
+      rewards: ['NATIVE'],
+      timeLeft: '90 days',
+      userStaked: '$5,000.00',
+      pendingRewards: '$285.75',
       isActive: true,
     },
   ]
@@ -92,7 +92,7 @@ export default function FarmingPage() {
               <TabsContent value="my-farms">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {farms
-                    .filter((farm) => Number.parseFloat(farm.userStaked.replace(/[$,]/g, "")) > 0)
+                    .filter(farm => Number.parseFloat(farm.userStaked.replace(/[$,]/g, '')) > 0)
                     .map((farm, index) => (
                       <FarmCard key={index} farm={farm} />
                     ))}

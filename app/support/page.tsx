@@ -1,12 +1,17 @@
-import { Header } from "@/components/layout/header"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import {
   MessageCircle,
   Mail,
@@ -19,66 +24,66 @@ import {
   Book,
   Video,
   Users,
-} from "lucide-react"
+} from 'lucide-react'
 
 export default function SupportPage() {
   const faqs = [
     {
-      question: "How do I connect my wallet?",
+      question: 'How do I connect my wallet?',
       answer:
         "Click the 'Connect Wallet' button in the top right corner and select your preferred wallet (Phantom, Solflare, or Backpack). Make sure you have the wallet extension installed in your browser.",
     },
     {
-      question: "What are the fees for swapping tokens?",
+      question: 'What are the fees for swapping tokens?',
       answer:
         "Swap fees vary depending on the route and liquidity. Typically, you'll pay a 0.25% trading fee plus Solana network fees (usually less than $0.01). The exact fees are shown before you confirm any transaction.",
     },
     {
-      question: "How do liquidity pools work?",
+      question: 'How do liquidity pools work?',
       answer:
-        "Liquidity pools allow you to provide tokens to enable trading. In return, you receive LP tokens representing your share of the pool and earn fees from trades. You can withdraw your liquidity at any time.",
+        'Liquidity pools allow you to provide tokens to enable trading. In return, you receive LP tokens representing your share of the pool and earn fees from trades. You can withdraw your liquidity at any time.',
     },
     {
-      question: "What is farming/staking?",
+      question: 'What is farming/staking?',
       answer:
-        "Farming allows you to stake your LP tokens to earn additional rewards. Staking lets you lock up tokens to earn yield. Both help secure the network and provide you with passive income.",
+        'Farming allows you to stake your LP tokens to earn additional rewards. Staking lets you lock up tokens to earn yield. Both help secure the network and provide you with passive income.',
     },
     {
-      question: "Is my money safe?",
+      question: 'Is my money safe?',
       answer:
-        "MoonDex is non-custodial, meaning you always control your funds. We never have access to your private keys. However, DeFi involves smart contract risks, so only invest what you can afford to lose.",
+        'MoonDex is non-custodial, meaning you always control your funds. We never have access to your private keys. However, DeFi involves smart contract risks, so only invest what you can afford to lose.',
     },
     {
-      question: "How do I report a bug?",
+      question: 'How do I report a bug?',
       answer:
-        "You can report bugs through our support ticket system, Discord community, or email us directly. Please include as much detail as possible, including screenshots and steps to reproduce the issue.",
+        'You can report bugs through our support ticket system, Discord community, or email us directly. Please include as much detail as possible, including screenshots and steps to reproduce the issue.',
     },
   ]
 
   const supportTickets = [
     {
-      id: "#12345",
-      subject: "Swap transaction failed",
-      status: "Open",
-      priority: "High",
-      created: "2 hours ago",
-      lastUpdate: "1 hour ago",
+      id: '#12345',
+      subject: 'Swap transaction failed',
+      status: 'Open',
+      priority: 'High',
+      created: '2 hours ago',
+      lastUpdate: '1 hour ago',
     },
     {
-      id: "#12344",
-      subject: "Cannot connect Phantom wallet",
-      status: "In Progress",
-      priority: "Medium",
-      created: "1 day ago",
-      lastUpdate: "6 hours ago",
+      id: '#12344',
+      subject: 'Cannot connect Phantom wallet',
+      status: 'In Progress',
+      priority: 'Medium',
+      created: '1 day ago',
+      lastUpdate: '6 hours ago',
     },
     {
-      id: "#12343",
-      subject: "LP rewards not showing",
-      status: "Resolved",
-      priority: "Low",
-      created: "3 days ago",
-      lastUpdate: "2 days ago",
+      id: '#12343',
+      subject: 'LP rewards not showing',
+      status: 'Resolved',
+      priority: 'Low',
+      created: '3 days ago',
+      lastUpdate: '2 days ago',
     },
   ]
 
@@ -129,7 +134,9 @@ export default function SupportPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">Comprehensive guides and API documentation.</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Comprehensive guides and API documentation.
+                      </p>
                       <Button variant="outline" className="w-full bg-transparent">
                         Read Docs
                       </Button>
@@ -144,7 +151,9 @@ export default function SupportPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">Step-by-step video guides for all features.</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Step-by-step video guides for all features.
+                      </p>
                       <Button variant="outline" className="w-full bg-transparent">
                         Watch Videos
                       </Button>
@@ -262,7 +271,10 @@ export default function SupportPage() {
 
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Description</label>
-                        <Textarea placeholder="Please provide detailed information about your issue..." rows={6} />
+                        <Textarea
+                          placeholder="Please provide detailed information about your issue..."
+                          rows={6}
+                        />
                       </div>
 
                       <Button className="w-full">Submit Ticket</Button>
@@ -279,18 +291,18 @@ export default function SupportPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {supportTickets.map((ticket) => (
+                      {supportTickets.map(ticket => (
                         <div key={ticket.id} className="border rounded-lg p-4">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{ticket.id}</span>
                               <Badge
                                 variant={
-                                  ticket.status === "Open"
-                                    ? "destructive"
-                                    : ticket.status === "In Progress"
-                                      ? "default"
-                                      : "secondary"
+                                  ticket.status === 'Open'
+                                    ? 'destructive'
+                                    : ticket.status === 'In Progress'
+                                      ? 'default'
+                                      : 'secondary'
                                 }
                               >
                                 {ticket.status}
@@ -343,7 +355,9 @@ export default function SupportPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">Technical documentation for developers.</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Technical documentation for developers.
+                      </p>
                       <Button variant="outline" className="w-full bg-transparent">
                         View Docs
                       </Button>
@@ -358,7 +372,9 @@ export default function SupportPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">Video tutorials and walkthroughs.</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Video tutorials and walkthroughs.
+                      </p>
                       <Button variant="outline" className="w-full bg-transparent">
                         Watch Now
                       </Button>
@@ -373,7 +389,9 @@ export default function SupportPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">Best practices for keeping your funds safe.</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Best practices for keeping your funds safe.
+                      </p>
                       <Button variant="outline" className="w-full bg-transparent">
                         Read Guide
                       </Button>
@@ -405,7 +423,9 @@ export default function SupportPage() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">Join our community forums and discussions.</p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Join our community forums and discussions.
+                      </p>
                       <Button variant="outline" className="w-full bg-transparent">
                         Join Community
                       </Button>

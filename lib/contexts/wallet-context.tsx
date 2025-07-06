@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import type React from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 
-type WalletType = "phantom" | "solflare" | "backpack" | null
+type WalletType = 'phantom' | 'solflare' | 'backpack' | null
 
 type WalletContextType = {
   isConnected: boolean
@@ -50,8 +50,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check if wallet was previously connected
-    const savedWallet = localStorage.getItem("connectedWallet") as WalletType
-    const savedAddress = localStorage.getItem("walletAddress")
+    const savedWallet = localStorage.getItem('connectedWallet') as WalletType
+    const savedAddress = localStorage.getItem('walletAddress')
 
     if (savedWallet && savedAddress) {
       // Try to reconnect automatically
@@ -61,7 +61,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const reconnectWallet = async (type: WalletType) => {
     try {
-      if (type === "phantom" && window.solana?.isPhantom) {
+      if (type === 'phantom' && window.solana?.isPhantom) {
         if (window.solana.publicKey) {
           const publicKeyStr = window.solana.publicKey.toString()
           setWalletType(type)
@@ -72,23 +72,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (error) {
-      console.error("Failed to reconnect wallet:", error)
+      console.error('Failed to reconnect wallet:', error)
       // Clear saved data if reconnection fails
-      localStorage.removeItem("connectedWallet")
-      localStorage.removeItem("walletAddress")
+      localStorage.removeItem('connectedWallet')
+      localStorage.removeItem('walletAddress')
     }
   }
 
   const connect = async (type: WalletType) => {
     try {
-      let walletAddress = ""
-      let publicKeyStr = ""
+      let walletAddress = ''
+      let publicKeyStr = ''
 
       switch (type) {
-        case "phantom":
+        case 'phantom':
           if (!window.solana?.isPhantom) {
-            window.open("https://phantom.app/", "_blank")
-            throw new Error("Phantom wallet not found. Please install Phantom.")
+            window.open('https://phantom.app/', '_blank')
+            throw new Error('Phantom wallet not found. Please install Phantom.')
           }
 
           const phantomResponse = await window.solana.connect()
@@ -96,10 +96,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           walletAddress = publicKeyStr
           break
 
-        case "solflare":
+        case 'solflare':
           if (!window.solflare) {
-            window.open("https://solflare.com/", "_blank")
-            throw new Error("Solflare wallet not found. Please install Solflare.")
+            window.open('https://solflare.com/', '_blank')
+            throw new Error('Solflare wallet not found. Please install Solflare.')
           }
 
           const solflareResponse = await window.solflare.connect()
@@ -107,10 +107,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           walletAddress = publicKeyStr
           break
 
-        case "backpack":
+        case 'backpack':
           if (!window.backpack) {
-            window.open("https://backpack.app/", "_blank")
-            throw new Error("Backpack wallet not found. Please install Backpack.")
+            window.open('https://backpack.app/', '_blank')
+            throw new Error('Backpack wallet not found. Please install Backpack.')
           }
 
           const backpackResponse = await window.backpack.connect()
@@ -119,7 +119,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           break
 
         default:
-          throw new Error("Unsupported wallet type")
+          throw new Error('Unsupported wallet type')
       }
 
       setWalletType(type)
@@ -128,17 +128,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setIsConnected(true)
       setBalance(Math.random() * 100) // Mock balance - in real app, fetch from blockchain
 
-      localStorage.setItem("connectedWallet", type!)
-      localStorage.setItem("walletAddress", walletAddress)
+      localStorage.setItem('connectedWallet', type!)
+      localStorage.setItem('walletAddress', walletAddress)
 
       // Listen for account changes (Phantom specific)
-      if (type === "phantom" && window.solana) {
-        window.solana.on("accountChanged", () => {
+      if (type === 'phantom' && window.solana) {
+        window.solana.on('accountChanged', () => {
           disconnect()
         })
       }
     } catch (error) {
-      console.error("Failed to connect wallet:", error)
+      console.error('Failed to connect wallet:', error)
       throw error
     }
   }
@@ -146,15 +146,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const disconnect = async () => {
     try {
       // Disconnect from the actual wallet
-      if (walletType === "phantom" && window.solana) {
+      if (walletType === 'phantom' && window.solana) {
         await window.solana.disconnect()
-      } else if (walletType === "solflare" && window.solflare) {
+      } else if (walletType === 'solflare' && window.solflare) {
         await window.solflare.disconnect()
-      } else if (walletType === "backpack" && window.backpack) {
+      } else if (walletType === 'backpack' && window.backpack) {
         await window.backpack.disconnect()
       }
     } catch (error) {
-      console.error("Error disconnecting from wallet:", error)
+      console.error('Error disconnecting from wallet:', error)
     }
 
     // Clear local state
@@ -164,8 +164,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setPublicKey(null)
     setBalance(0)
 
-    localStorage.removeItem("connectedWallet")
-    localStorage.removeItem("walletAddress")
+    localStorage.removeItem('connectedWallet')
+    localStorage.removeItem('walletAddress')
   }
 
   return (
@@ -188,7 +188,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 export const useWallet = () => {
   const context = useContext(WalletContext)
   if (!context) {
-    throw new Error("useWallet must be used within a WalletProvider")
+    throw new Error('useWallet must be used within a WalletProvider')
   }
   return context
 }

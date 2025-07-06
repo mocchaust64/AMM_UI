@@ -1,11 +1,18 @@
-import { Header } from "@/components/layout/header"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 export default function TradingPage() {
   const orderBook = {
@@ -22,9 +29,9 @@ export default function TradingPage() {
   }
 
   const recentTrades = [
-    { price: 100.02, amount: 0.5, time: "14:32:15", type: "buy" },
-    { price: 99.98, amount: 1.2, time: "14:32:10", type: "sell" },
-    { price: 100.01, amount: 0.8, time: "14:32:05", type: "buy" },
+    { price: 100.02, amount: 0.5, time: '14:32:15', type: 'buy' },
+    { price: 99.98, amount: 1.2, time: '14:32:10', type: 'sell' },
+    { price: 100.01, amount: 0.8, time: '14:32:05', type: 'buy' },
   ]
 
   return (
@@ -36,7 +43,9 @@ export default function TradingPage() {
           <main className="p-6">
             <div className="mb-6">
               <h1 className="text-2xl font-bold mb-2">Advanced Trading</h1>
-              <p className="text-muted-foreground">Professional trading interface with orderbook and charts</p>
+              <p className="text-muted-foreground">
+                Professional trading interface with orderbook and charts
+              </p>
             </div>
 
             <div className="grid lg:grid-cols-4 gap-6">
@@ -104,14 +113,18 @@ export default function TradingPage() {
                             <label className="text-sm font-medium">Total (USDC)</label>
                             <Input placeholder="0.0" readOnly />
                           </div>
-                          <Button className="w-full bg-green-600 hover:bg-green-700">Buy SOL</Button>
+                          <Button className="w-full bg-green-600 hover:bg-green-700">
+                            Buy SOL
+                          </Button>
                         </TabsContent>
                         <TabsContent value="market" className="space-y-4">
                           <div>
                             <label className="text-sm font-medium">Amount (SOL)</label>
                             <Input placeholder="0.0" />
                           </div>
-                          <Button className="w-full bg-green-600 hover:bg-green-700">Buy SOL (Market)</Button>
+                          <Button className="w-full bg-green-600 hover:bg-green-700">
+                            Buy SOL (Market)
+                          </Button>
                         </TabsContent>
                       </Tabs>
                     </CardContent>
@@ -147,7 +160,9 @@ export default function TradingPage() {
                             <label className="text-sm font-medium">Amount (SOL)</label>
                             <Input placeholder="0.0" />
                           </div>
-                          <Button className="w-full bg-red-600 hover:bg-red-700">Sell SOL (Market)</Button>
+                          <Button className="w-full bg-red-600 hover:bg-red-700">
+                            Sell SOL (Market)
+                          </Button>
                         </TabsContent>
                       </Tabs>
                     </CardContent>
@@ -207,7 +222,9 @@ export default function TradingPage() {
                     <div className="space-y-2">
                       {recentTrades.map((trade, index) => (
                         <div key={index} className="flex justify-between text-xs">
-                          <span className={trade.type === "buy" ? "text-green-500" : "text-red-500"}>
+                          <span
+                            className={trade.type === 'buy' ? 'text-green-500' : 'text-red-500'}
+                          >
                             {trade.price}
                           </span>
                           <span>{trade.amount}</span>

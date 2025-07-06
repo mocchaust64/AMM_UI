@@ -1,10 +1,10 @@
-import { Header } from "@/components/layout/header"
-import { Sidebar } from "@/components/layout/sidebar"
-import { PortfolioOverview } from "@/components/portfolio/portfolio-overview"
-import { WalletTokens } from "@/components/portfolio/wallet-tokens"
-import { VaultTable } from "@/components/vault-table"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { PortfolioOverview } from '@/components/portfolio/portfolio-overview'
+import { WalletTokens } from '@/components/portfolio/wallet-tokens'
+import { VaultTable } from '@/components/vault-table'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function PortfolioPage() {
   return (
@@ -56,7 +56,9 @@ export default function PortfolioPage() {
               <TabsContent value="liquidity">
                 <Card>
                   <CardContent className="p-6">
-                    <p className="text-muted-foreground text-center">Liquidity positions will be displayed here</p>
+                    <p className="text-muted-foreground text-center">
+                      Liquidity positions will be displayed here
+                    </p>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -64,7 +66,9 @@ export default function PortfolioPage() {
               <TabsContent value="farming">
                 <Card>
                   <CardContent className="p-6">
-                    <p className="text-muted-foreground text-center">Farming positions will be displayed here</p>
+                    <p className="text-muted-foreground text-center">
+                      Farming positions will be displayed here
+                    </p>
                   </CardContent>
                 </Card>
               </TabsContent>

@@ -1,50 +1,57 @@
-import { Header } from "@/components/layout/header"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MetricsCard } from "@/components/metrics-card"
-import { StatsChart } from "@/components/stats-chart"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { TrendingUp, TrendingDown } from "lucide-react"
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { MetricsCard } from '@/components/metrics-card'
+import { StatsChart } from '@/components/stats-chart'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { TrendingUp, TrendingDown } from 'lucide-react'
 
 export default function AnalyticsPage() {
   const topTokens = [
     {
-      name: "Solana",
-      symbol: "SOL",
-      price: "$100.25",
-      change: "+5.2%",
-      volume: "$45M",
-      marketCap: "$42B",
+      name: 'Solana',
+      symbol: 'SOL',
+      price: '$100.25',
+      change: '+5.2%',
+      volume: '$45M',
+      marketCap: '$42B',
       isPositive: true,
     },
     {
-      name: "Raydium",
-      symbol: "RAY",
-      price: "$1.85",
-      change: "+12.8%",
-      volume: "$8.2M",
-      marketCap: "$185M",
+      name: 'Raydium',
+      symbol: 'RAY',
+      price: '$1.85',
+      change: '+12.8%',
+      volume: '$8.2M',
+      marketCap: '$185M',
       isPositive: true,
     },
     {
-      name: "Serum",
-      symbol: "SRM",
-      price: "$0.45",
-      change: "-2.1%",
-      volume: "$2.1M",
-      marketCap: "$45M",
+      name: 'Serum',
+      symbol: 'SRM',
+      price: '$0.45',
+      change: '-2.1%',
+      volume: '$2.1M',
+      marketCap: '$45M',
       isPositive: false,
     },
   ]
 
   const topPools = [
-    { pair: "SOL/USDC", tvl: "$12.5M", volume24h: "$2.4M", fees24h: "$7.2K", apy: "12.5%" },
-    { pair: "RAY/SOL", tvl: "$8.2M", volume24h: "$1.8M", fees24h: "$5.4K", apy: "18.3%" },
-    { pair: "SRM/USDC", tvl: "$3.1M", volume24h: "$650K", fees24h: "$1.95K", apy: "8.7%" },
+    { pair: 'SOL/USDC', tvl: '$12.5M', volume24h: '$2.4M', fees24h: '$7.2K', apy: '12.5%' },
+    { pair: 'RAY/SOL', tvl: '$8.2M', volume24h: '$1.8M', fees24h: '$5.4K', apy: '18.3%' },
+    { pair: 'SRM/USDC', tvl: '$3.1M', volume24h: '$650K', fees24h: '$1.95K', apy: '8.7%' },
   ]
 
   return (
@@ -56,7 +63,9 @@ export default function AnalyticsPage() {
           <main className="p-6">
             <div className="mb-6">
               <h1 className="text-2xl font-bold mb-2">Analytics</h1>
-              <p className="text-muted-foreground">Comprehensive DeFi analytics and market insights</p>
+              <p className="text-muted-foreground">
+                Comprehensive DeFi analytics and market insights
+              </p>
             </div>
 
             {/* Overview Metrics */}
@@ -64,22 +73,22 @@ export default function AnalyticsPage() {
               <MetricsCard
                 title="Total Value Locked"
                 value="$125.4M"
-                change={{ value: "$8.2M", percentage: "+7.0%", isPositive: true }}
+                change={{ value: '$8.2M', percentage: '+7.0%', isPositive: true }}
               />
               <MetricsCard
                 title="24h Volume"
                 value="$45.2M"
-                change={{ value: "$5.1M", percentage: "+12.7%", isPositive: true }}
+                change={{ value: '$5.1M', percentage: '+12.7%', isPositive: true }}
               />
               <MetricsCard
                 title="Total Fees"
                 value="$125.8K"
-                change={{ value: "$12.5K", percentage: "+11.0%", isPositive: true }}
+                change={{ value: '$12.5K', percentage: '+11.0%', isPositive: true }}
               />
               <MetricsCard
                 title="Active Users"
                 value="12,450"
-                change={{ value: "1,250", percentage: "+11.2%", isPositive: true }}
+                change={{ value: '1,250', percentage: '+11.2%', isPositive: true }}
               />
             </div>
 
@@ -161,7 +170,9 @@ export default function AnalyticsPage() {
                                 ) : (
                                   <TrendingDown className="h-3 w-3 text-red-500" />
                                 )}
-                                <span className={`text-sm ${token.isPositive ? "text-green-500" : "text-red-500"}`}>
+                                <span
+                                  className={`text-sm ${token.isPositive ? 'text-green-500' : 'text-red-500'}`}
+                                >
                                   {token.change}
                                 </span>
                               </div>
@@ -186,7 +197,9 @@ export default function AnalyticsPage() {
                             </div>
                             <div className="text-right">
                               <Badge variant="secondary">{pool.apy} APY</Badge>
-                              <p className="text-sm text-muted-foreground mt-1">{pool.volume24h} 24h</p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {pool.volume24h} 24h
+                              </p>
                             </div>
                           </div>
                         ))}
@@ -224,13 +237,17 @@ export default function AnalyticsPage() {
                                 </Avatar>
                                 <div>
                                   <div className="font-medium">{token.name}</div>
-                                  <div className="text-xs text-muted-foreground">{token.symbol}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {token.symbol}
+                                  </div>
                                 </div>
                               </div>
                             </TableCell>
                             <TableCell className="font-semibold">{token.price}</TableCell>
                             <TableCell>
-                              <Badge variant={token.isPositive ? "default" : "destructive"}>{token.change}</Badge>
+                              <Badge variant={token.isPositive ? 'default' : 'destructive'}>
+                                {token.change}
+                              </Badge>
                             </TableCell>
                             <TableCell>{token.volume}</TableCell>
                             <TableCell>{token.marketCap}</TableCell>

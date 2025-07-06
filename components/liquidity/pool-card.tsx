@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { TrendingUp } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { TrendingUp } from 'lucide-react'
 
 interface PoolCardProps {
   pool: {
@@ -12,7 +12,7 @@ interface PoolCardProps {
     apy: string
     volume24h: string
     fees24h: string
-    type: "Standard" | "Custom"
+    type: 'Standard' | 'Custom'
     isActive: boolean
   }
 }
@@ -25,14 +25,14 @@ export function PoolCard({ pool }: PoolCardProps) {
           <div className="flex -space-x-2">
             {pool.tokens.map((token, index) => (
               <Avatar key={index} className="h-8 w-8 border-2 border-background">
-                <AvatarImage src={token.icon || "/placeholder.svg"} />
+                <AvatarImage src={token.icon || '/placeholder.svg'} />
                 <AvatarFallback>{token.symbol}</AvatarFallback>
               </Avatar>
             ))}
           </div>
           <CardTitle className="text-lg">{pool.name}</CardTitle>
         </div>
-        <Badge variant={pool.type === "Standard" ? "default" : "secondary"}>{pool.type}</Badge>
+        <Badge variant={pool.type === 'Standard' ? 'default' : 'secondary'}>{pool.type}</Badge>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-4 text-sm">

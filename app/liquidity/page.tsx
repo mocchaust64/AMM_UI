@@ -1,56 +1,56 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Header } from "@/components/layout/header"
-import { Sidebar } from "@/components/layout/sidebar"
-import { PoolCard } from "@/components/liquidity/pool-card"
-import { CreatePoolDialog } from "@/components/liquidity/create-pool-dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Plus } from "lucide-react"
+import { useState } from 'react'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { PoolCard } from '@/components/liquidity/pool-card'
+import { CreatePoolDialog } from '@/components/liquidity/create-pool-dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Search, Plus } from 'lucide-react'
 
 export default function LiquidityPage() {
   const [createPoolOpen, setCreatePoolOpen] = useState(false)
 
   const pools = [
     {
-      name: "SOL/USDC",
+      name: 'SOL/USDC',
       tokens: [
-        { symbol: "SOL", icon: "/placeholder.svg?height=32&width=32" },
-        { symbol: "USDC", icon: "/placeholder.svg?height=32&width=32" },
+        { symbol: 'SOL', icon: '/placeholder.svg?height=32&width=32' },
+        { symbol: 'USDC', icon: '/placeholder.svg?height=32&width=32' },
       ],
-      tvl: "$2.4M",
-      apy: "12.5%",
-      volume24h: "$450K",
-      fees24h: "$1.2K",
-      type: "Standard" as const,
+      tvl: '$2.4M',
+      apy: '12.5%',
+      volume24h: '$450K',
+      fees24h: '$1.2K',
+      type: 'Standard' as const,
       isActive: true,
     },
     {
-      name: "RAY/SOL",
+      name: 'RAY/SOL',
       tokens: [
-        { symbol: "RAY", icon: "/placeholder.svg?height=32&width=32" },
-        { symbol: "SOL", icon: "/placeholder.svg?height=32&width=32" },
+        { symbol: 'RAY', icon: '/placeholder.svg?height=32&width=32' },
+        { symbol: 'SOL', icon: '/placeholder.svg?height=32&width=32' },
       ],
-      tvl: "$1.8M",
-      apy: "18.3%",
-      volume24h: "$320K",
-      fees24h: "$890",
-      type: "Standard" as const,
+      tvl: '$1.8M',
+      apy: '18.3%',
+      volume24h: '$320K',
+      fees24h: '$890',
+      type: 'Standard' as const,
       isActive: true,
     },
     {
-      name: "CUSTOM/SOL",
+      name: 'CUSTOM/SOL',
       tokens: [
-        { symbol: "CUSTOM", icon: "/placeholder.svg?height=32&width=32" },
-        { symbol: "SOL", icon: "/placeholder.svg?height=32&width=32" },
+        { symbol: 'CUSTOM', icon: '/placeholder.svg?height=32&width=32' },
+        { symbol: 'SOL', icon: '/placeholder.svg?height=32&width=32' },
       ],
-      tvl: "$850K",
-      apy: "25.7%",
-      volume24h: "$120K",
-      fees24h: "$450",
-      type: "Custom" as const,
+      tvl: '$850K',
+      apy: '25.7%',
+      volume24h: '$120K',
+      fees24h: '$450',
+      type: 'Custom' as const,
       isActive: true,
     },
   ]
@@ -108,7 +108,7 @@ export default function LiquidityPage() {
               <TabsContent value="standard">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {pools
-                    .filter((pool) => pool.type === "Standard")
+                    .filter(pool => pool.type === 'Standard')
                     .map((pool, index) => (
                       <PoolCard key={index} pool={pool} />
                     ))}
@@ -118,7 +118,7 @@ export default function LiquidityPage() {
               <TabsContent value="custom">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {pools
-                    .filter((pool) => pool.type === "Custom")
+                    .filter(pool => pool.type === 'Custom')
                     .map((pool, index) => (
                       <PoolCard key={index} pool={pool} />
                     ))}
@@ -126,7 +126,7 @@ export default function LiquidityPage() {
               </TabsContent>
             </Tabs>
 
-            <CreatePoolDialog open={createPoolOpen} onOpenChange={setCreatePoolOpen} />
+            <CreatePoolDialog _open={createPoolOpen} onOpenChange={setCreatePoolOpen} />
           </main>
         </div>
       </div>

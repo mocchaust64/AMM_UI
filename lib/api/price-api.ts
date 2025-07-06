@@ -1,5 +1,5 @@
 // Free API for crypto prices
-const COINGECKO_API = "https://api.coingecko.com/api/v3"
+const COINGECKO_API = 'https://api.coingecko.com/api/v3'
 
 export interface TokenPrice {
   id: string
@@ -15,16 +15,16 @@ export interface TokenPrice {
 export async function getTokenPrices(tokens: string[]): Promise<TokenPrice[]> {
   try {
     const response = await fetch(
-      `${COINGECKO_API}/coins/markets?vs_currency=usd&ids=${tokens.join(",")}&order=market_cap_desc&per_page=100&page=1&sparkline=false`,
+      `${COINGECKO_API}/coins/markets?vs_currency=usd&ids=${tokens.join(',')}&order=market_cap_desc&per_page=100&page=1&sparkline=false`
     )
 
     if (!response.ok) {
-      throw new Error("Failed to fetch prices")
+      throw new Error('Failed to fetch prices')
     }
 
     return await response.json()
   } catch (error) {
-    console.error("Error fetching token prices:", error)
+    console.error('Error fetching token prices:', error)
     return []
   }
 }
@@ -34,13 +34,13 @@ export async function getTokenPrice(tokenId: string): Promise<number> {
     const response = await fetch(`${COINGECKO_API}/simple/price?ids=${tokenId}&vs_currencies=usd`)
 
     if (!response.ok) {
-      throw new Error("Failed to fetch price")
+      throw new Error('Failed to fetch price')
     }
 
     const data = await response.json()
     return data[tokenId]?.usd || 0
   } catch (error) {
-    console.error("Error fetching token price:", error)
+    console.error('Error fetching token price:', error)
     return 0
   }
 }
@@ -62,13 +62,13 @@ export async function getSwapRate(fromToken: string, toToken: string, amount: nu
         outputAmount,
         minimumReceived,
         priceImpact: 0.1, // Mock price impact
-        route: "Jupiter Aggregator",
+        route: 'Jupiter Aggregator',
       }
     }
 
     return null
   } catch (error) {
-    console.error("Error calculating swap rate:", error)
+    console.error('Error calculating swap rate:', error)
     return null
   }
 }

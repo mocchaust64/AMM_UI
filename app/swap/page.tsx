@@ -1,16 +1,16 @@
-"use client"
+'use client'
 
-import { Header } from "@/components/layout/header"
-import { Sidebar } from "@/components/layout/sidebar"
-import { SwapInterface } from "@/components/swap/swap-interface"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { SwapInterface } from '@/components/swap/swap-interface'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 export default function SwapPage() {
   const recentSwaps = [
-    { from: "SOL", to: "USDC", amount: "5.2", value: "$520.40", time: "2 min ago" },
-    { from: "USDC", to: "RAY", amount: "100", value: "$100.00", time: "15 min ago" },
-    { from: "RAY", to: "SOL", amount: "50", value: "$75.50", time: "1 hour ago" },
+    { from: 'SOL', to: 'USDC', amount: '5.2', value: '$520.40', time: '2 min ago' },
+    { from: 'USDC', to: 'RAY', amount: '100', value: '$100.00', time: '15 min ago' },
+    { from: 'RAY', to: 'SOL', amount: '50', value: '$75.50', time: '1 hour ago' },
   ]
 
   return (
@@ -22,7 +22,9 @@ export default function SwapPage() {
           <main className="p-6">
             <div className="mb-6">
               <h1 className="text-2xl font-bold mb-2">Token Swap</h1>
-              <p className="text-muted-foreground">Swap tokens instantly with the best rates across Solana DEXs</p>
+              <p className="text-muted-foreground">
+                Swap tokens instantly with the best rates across Solana DEXs
+              </p>
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
@@ -37,7 +39,10 @@ export default function SwapPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {recentSwaps.map((swap, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
                         <div className="flex items-center gap-3">
                           <Badge variant="outline">
                             {swap.from} → {swap.to}

@@ -1,60 +1,67 @@
-import { Header } from "@/components/layout/header"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Plus, AlertTriangle, CheckCircle } from "lucide-react"
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Search, Plus, AlertTriangle, CheckCircle } from 'lucide-react'
 
 export default function TokensPage() {
   const tokens = [
     {
-      name: "Solana",
-      symbol: "SOL",
-      address: "So11111111111111111111111111111111111111112",
-      type: "Native",
+      name: 'Solana',
+      symbol: 'SOL',
+      address: 'So11111111111111111111111111111111111111112',
+      type: 'Native',
       extensions: [],
       verified: true,
-      supply: "400M",
-      holders: "1.2M",
-      price: "$100.25"
+      supply: '400M',
+      holders: '1.2M',
+      price: '$100.25',
     },
     {
-      name: "USD Coin",
-      symbol: "USDC",
-      address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-      type: "SPL Token",
-      extensions: ["Transfer Hook", "Metadata"],
+      name: 'USD Coin',
+      symbol: 'USDC',
+      address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      type: 'SPL Token',
+      extensions: ['Transfer Hook', 'Metadata'],
       verified: true,
-      supply: "2.1B",
-      holders: "850K",
-      price: "$1.00"
+      supply: '2.1B',
+      holders: '850K',
+      price: '$1.00',
     },
     {
-      name: "Raydium",
-      symbol: "RAY",
-      address: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
-      type: "SPL Token",
-      extensions: ["Permanent Delegate"],
+      name: 'Raydium',
+      symbol: 'RAY',
+      address: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
+      type: 'SPL Token',
+      extensions: ['Permanent Delegate'],
       verified: true,
-      supply: "555M",
-      holders: "125K",
-      price: "$1.85"
+      supply: '555M',
+      holders: '125K',
+      price: '$1.85',
     },
     {
-      name: "Custom Token",
-      symbol: "CUSTOM",
-      address: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-      type: "SPL Token",
-      extensions: ["Transfer Hook", "Metadata", "Whitelist"],
+      name: 'Custom Token',
+      symbol: 'CUSTOM',
+      address: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+      type: 'SPL Token',
+      extensions: ['Transfer Hook', 'Metadata', 'Whitelist'],
       verified: false,
-      supply: "1M",
-      holders: "2.5K",
-      price: "$0.45"
-    }
+      supply: '1M',
+      holders: '2.5K',
+      price: '$0.45',
+    },
   ]
 
   const whitelistedTokens = tokens.filter(token => token.verified)
@@ -70,7 +77,9 @@ export default function TokensPage() {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold mb-2">Token Explorer</h1>
-                <p className="text-muted-foreground">Explore and manage SPL tokens with extensions</p>
+                <p className="text-muted-foreground">
+                  Explore and manage SPL tokens with extensions
+                </p>
               </div>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -219,7 +228,9 @@ export default function TokensPage() {
                               <Button size="sm" variant="outline" className="w-full">
                                 View Details
                               </Button>
-                              <Button size="sm" className="w-full">Add to Wallet</Button>
+                              <Button size="sm" className="w-full">
+                                Add to Wallet
+                              </Button>
                             </div>
                           </CardContent>
                         </Card>
@@ -275,7 +286,9 @@ export default function TokensPage() {
                               <Button size="sm" variant="outline" className="w-full">
                                 View Details
                               </Button>
-                              <Button size="sm" variant="destructive" className="w-full">Remove</Button>
+                              <Button size="sm" variant="destructive" className="w-full">
+                                Remove
+                              </Button>
                             </div>
                           </CardContent>
                         </Card>
@@ -302,52 +315,56 @@ export default function TokensPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {tokens.filter(token => token.extensions.length > 0).map((token, index) => (
-                          <TableRow key={index}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                                  <AvatarFallback>{token.symbol}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="font-medium">{token.name}</div>
-                                  <div className="text-xs text-muted-foreground">{token.symbol}</div>
+                        {tokens
+                          .filter(token => token.extensions.length > 0)
+                          .map((token, index) => (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage src="/placeholder.svg?height=32&width=32" />
+                                    <AvatarFallback>{token.symbol}</AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <div className="font-medium">{token.name}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {token.symbol}
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-wrap gap-1">
-                                {token.extensions.map((ext, i) => (
-                                  <Badge key={i} variant="secondary" className="text-xs">
-                                    {ext}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap gap-1">
+                                  {token.extensions.map((ext, i) => (
+                                    <Badge key={i} variant="secondary" className="text-xs">
+                                      {ext}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{token.type}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                {token.verified ? (
+                                  <Badge className="gap-1 bg-green-500/10 text-green-500">
+                                    <CheckCircle className="h-3 w-3" />
+                                    Verified
                                   </Badge>
-                                ))}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{token.type}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              {token.verified ? (
-                                <Badge className="gap-1 bg-green-500/10 text-green-500">
-                                  <CheckCircle className="h-3 w-3" />
-                                  Verified
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary" className="gap-1">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  Unverified
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Button size="sm" variant="outline">
-                                View Details
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                                ) : (
+                                  <Badge variant="secondary" className="gap-1">
+                                    <AlertTriangle className="h-3 w-3" />
+                                    Unverified
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Button size="sm" variant="outline">
+                                  View Details
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
                       </TableBody>
                     </Table>
                   </CardContent>

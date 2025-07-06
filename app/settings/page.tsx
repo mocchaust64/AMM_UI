@@ -1,22 +1,39 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Header } from "@/components/layout/header"
-import { Sidebar } from "@/components/layout/sidebar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { useSettings } from "@/lib/contexts/settings-context"
-import { useWallet } from "@solana/wallet-adapter-react"
-import { useWalletModal } from "@solana/wallet-adapter-react-ui"
-import { User, Shield, Palette, Globe, Wallet, Bell, Download, Trash2, AlertTriangle, Save } from "lucide-react"
-import { toast } from "sonner"
+import { useState } from 'react'
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { useSettings } from '@/lib/contexts/settings-context'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { useWalletModal } from '@solana/wallet-adapter-react-ui'
+import {
+  User,
+  Shield,
+  Palette,
+  Globe,
+  Wallet,
+  Bell,
+  Download,
+  Trash2,
+  AlertTriangle,
+  Save,
+} from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function SettingsPage() {
   const {
@@ -41,16 +58,16 @@ export default function SettingsPage() {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   const handleSaveProfile = () => {
-    toast.success("Profile settings saved!")
+    toast.success('Profile settings saved!')
   }
 
   const handleSaveRegion = () => {
-    toast.success("Language & region settings saved!")
+    toast.success('Language & region settings saved!')
   }
 
   const handleDisconnectWallet = () => {
     disconnect()
-    toast.success("Wallet disconnected")
+    toast.success('Wallet disconnected')
   }
 
   const handleConnectWallet = () => {
@@ -61,7 +78,7 @@ export default function SettingsPage() {
     if (showResetConfirm) {
       resetSettings()
       setShowResetConfirm(false)
-      toast.success("All settings have been reset to default")
+      toast.success('All settings have been reset to default')
     } else {
       setShowResetConfirm(true)
       setTimeout(() => setShowResetConfirm(false), 5000)
@@ -70,15 +87,15 @@ export default function SettingsPage() {
 
   const handleExportSettings = () => {
     exportSettings()
-    toast.success("Settings exported successfully!")
+    toast.success('Settings exported successfully!')
   }
 
   const accentColors = [
-    { name: "blue", color: "bg-blue-500", value: "blue" },
-    { name: "green", color: "bg-green-500", value: "green" },
-    { name: "purple", color: "bg-purple-500", value: "purple" },
-    { name: "orange", color: "bg-orange-500", value: "orange" },
-    { name: "red", color: "bg-red-500", value: "red" },
+    { name: 'blue', color: 'bg-blue-500', value: 'blue' },
+    { name: 'green', color: 'bg-green-500', value: 'green' },
+    { name: 'purple', color: 'bg-purple-500', value: 'purple' },
+    { name: 'orange', color: 'bg-orange-500', value: 'orange' },
+    { name: 'red', color: 'bg-red-500', value: 'red' },
   ]
 
   return (
@@ -90,7 +107,9 @@ export default function SettingsPage() {
           <main className="p-6">
             <div className="mb-6">
               <h1 className="text-2xl font-bold mb-2">Settings</h1>
-              <p className="text-muted-foreground">Manage your account preferences and security settings</p>
+              <p className="text-muted-foreground">
+                Manage your account preferences and security settings
+              </p>
             </div>
 
             <Tabs defaultValue="general" className="space-y-6">
@@ -117,7 +136,7 @@ export default function SettingsPage() {
                         <Input
                           id="username"
                           value={profile.username}
-                          onChange={(e) => updateProfile({ username: e.target.value })}
+                          onChange={e => updateProfile({ username: e.target.value })}
                           placeholder="Enter username"
                         />
                       </div>
@@ -127,7 +146,7 @@ export default function SettingsPage() {
                           id="email"
                           type="email"
                           value={profile.email}
-                          onChange={(e) => updateProfile({ email: e.target.value })}
+                          onChange={e => updateProfile({ email: e.target.value })}
                           placeholder="Enter email"
                         />
                       </div>
@@ -138,7 +157,7 @@ export default function SettingsPage() {
                       <Input
                         id="bio"
                         value={profile.bio}
-                        onChange={(e) => updateProfile({ bio: e.target.value })}
+                        onChange={e => updateProfile({ bio: e.target.value })}
                         placeholder="Tell us about yourself"
                       />
                     </div>
@@ -163,7 +182,7 @@ export default function SettingsPage() {
                         <Label>Language</Label>
                         <Select
                           value={region.language}
-                          onValueChange={(value) => updateRegion({ language: value as any })}
+                          onValueChange={value => updateRegion({ language: value as any })}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -179,7 +198,7 @@ export default function SettingsPage() {
                         <Label>Currency</Label>
                         <Select
                           value={region.currency}
-                          onValueChange={(value) => updateRegion({ currency: value as any })}
+                          onValueChange={value => updateRegion({ currency: value as any })}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -195,7 +214,10 @@ export default function SettingsPage() {
 
                     <div className="space-y-2">
                       <Label>Timezone</Label>
-                      <Select value={region.timezone} onValueChange={(value) => updateRegion({ timezone: value })}>
+                      <Select
+                        value={region.timezone}
+                        onValueChange={value => updateRegion({ timezone: value })}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -232,7 +254,9 @@ export default function SettingsPage() {
                             <Wallet className="h-4 w-4 text-white" />
                           </div>
                           <div>
-                            <h4 className="font-medium">{wallet?.adapter.name || 'Unknown Wallet'}</h4>
+                            <h4 className="font-medium">
+                              {wallet?.adapter.name || 'Unknown Wallet'}
+                            </h4>
                             <p className="text-sm text-muted-foreground">Connected</p>
                           </div>
                         </div>
@@ -265,11 +289,15 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Transaction Confirmation</Label>
-                        <p className="text-sm text-muted-foreground">Require confirmation for all transactions</p>
+                        <p className="text-sm text-muted-foreground">
+                          Require confirmation for all transactions
+                        </p>
                       </div>
                       <Switch
                         checked={security.transactionConfirmation}
-                        onCheckedChange={(checked) => updateSecurity({ transactionConfirmation: checked })}
+                        onCheckedChange={checked =>
+                          updateSecurity({ transactionConfirmation: checked })
+                        }
                       />
                     </div>
 
@@ -278,11 +306,13 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Auto-lock Wallet</Label>
-                        <p className="text-sm text-muted-foreground">Automatically disconnect after inactivity</p>
+                        <p className="text-sm text-muted-foreground">
+                          Automatically disconnect after inactivity
+                        </p>
                       </div>
                       <Switch
                         checked={security.autoLockWallet}
-                        onCheckedChange={(checked) => updateSecurity({ autoLockWallet: checked })}
+                        onCheckedChange={checked => updateSecurity({ autoLockWallet: checked })}
                       />
                     </div>
 
@@ -292,7 +322,9 @@ export default function SettingsPage() {
                       <Label>Auto-lock Duration</Label>
                       <Select
                         value={security.autoLockDuration.toString()}
-                        onValueChange={(value) => updateSecurity({ autoLockDuration: Number.parseInt(value) })}
+                        onValueChange={value =>
+                          updateSecurity({ autoLockDuration: Number.parseInt(value) })
+                        }
                         disabled={!security.autoLockWallet}
                       >
                         <SelectTrigger>
@@ -312,11 +344,13 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Hide Small Balances</Label>
-                        <p className="text-sm text-muted-foreground">Hide tokens with balance less than $1</p>
+                        <p className="text-sm text-muted-foreground">
+                          Hide tokens with balance less than $1
+                        </p>
                       </div>
                       <Switch
                         checked={security.hideSmallBalances}
-                        onCheckedChange={(checked) => updateSecurity({ hideSmallBalances: checked })}
+                        onCheckedChange={checked => updateSecurity({ hideSmallBalances: checked })}
                       />
                     </div>
                   </CardContent>
@@ -331,17 +365,20 @@ export default function SettingsPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="p-4 border border-red-200 rounded-lg bg-red-50 dark:bg-red-950/20">
-                      <h4 className="font-medium text-red-800 dark:text-red-200 mb-2">Clear All Data</h4>
+                      <h4 className="font-medium text-red-800 dark:text-red-200 mb-2">
+                        Clear All Data
+                      </h4>
                       <p className="text-sm text-red-600 dark:text-red-300 mb-3">
-                        This will remove all your settings, preferences, and cached data. This action cannot be undone.
+                        This will remove all your settings, preferences, and cached data. This
+                        action cannot be undone.
                       </p>
                       <Button
-                        variant={showResetConfirm ? "destructive" : "outline"}
+                        variant={showResetConfirm ? 'destructive' : 'outline'}
                         size="sm"
                         onClick={handleResetSettings}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        {showResetConfirm ? "Click again to confirm" : "Clear All Data"}
+                        {showResetConfirm ? 'Click again to confirm' : 'Clear All Data'}
                       </Button>
                     </div>
                   </CardContent>
@@ -360,11 +397,15 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Transaction Notifications</Label>
-                        <p className="text-sm text-muted-foreground">Get notified when transactions complete</p>
+                        <p className="text-sm text-muted-foreground">
+                          Get notified when transactions complete
+                        </p>
                       </div>
                       <Switch
                         checked={notifications.transactionNotifications}
-                        onCheckedChange={(checked) => updateNotifications({ transactionNotifications: checked })}
+                        onCheckedChange={checked =>
+                          updateNotifications({ transactionNotifications: checked })
+                        }
                       />
                     </div>
 
@@ -373,11 +414,13 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Price Alerts</Label>
-                        <p className="text-sm text-muted-foreground">Notifications for significant price changes</p>
+                        <p className="text-sm text-muted-foreground">
+                          Notifications for significant price changes
+                        </p>
                       </div>
                       <Switch
                         checked={notifications.priceAlerts}
-                        onCheckedChange={(checked) => updateNotifications({ priceAlerts: checked })}
+                        onCheckedChange={checked => updateNotifications({ priceAlerts: checked })}
                       />
                     </div>
 
@@ -386,11 +429,15 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Farming Rewards</Label>
-                        <p className="text-sm text-muted-foreground">Notifications when rewards are available</p>
+                        <p className="text-sm text-muted-foreground">
+                          Notifications when rewards are available
+                        </p>
                       </div>
                       <Switch
                         checked={notifications.farmingRewards}
-                        onCheckedChange={(checked) => updateNotifications({ farmingRewards: checked })}
+                        onCheckedChange={checked =>
+                          updateNotifications({ farmingRewards: checked })
+                        }
                       />
                     </div>
 
@@ -399,11 +446,15 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Security Alerts</Label>
-                        <p className="text-sm text-muted-foreground">Important security notifications</p>
+                        <p className="text-sm text-muted-foreground">
+                          Important security notifications
+                        </p>
                       </div>
                       <Switch
                         checked={notifications.securityAlerts}
-                        onCheckedChange={(checked) => updateNotifications({ securityAlerts: checked })}
+                        onCheckedChange={checked =>
+                          updateNotifications({ securityAlerts: checked })
+                        }
                       />
                     </div>
 
@@ -412,11 +463,15 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Marketing Updates</Label>
-                        <p className="text-sm text-muted-foreground">News and feature announcements</p>
+                        <p className="text-sm text-muted-foreground">
+                          News and feature announcements
+                        </p>
                       </div>
                       <Switch
                         checked={notifications.marketingUpdates}
-                        onCheckedChange={(checked) => updateNotifications({ marketingUpdates: checked })}
+                        onCheckedChange={checked =>
+                          updateNotifications({ marketingUpdates: checked })
+                        }
                       />
                     </div>
                   </CardContent>
@@ -430,11 +485,15 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Browser Notifications</Label>
-                        <p className="text-sm text-muted-foreground">Show notifications in your browser</p>
+                        <p className="text-sm text-muted-foreground">
+                          Show notifications in your browser
+                        </p>
                       </div>
                       <Switch
                         checked={notifications.browserNotifications}
-                        onCheckedChange={(checked) => updateNotifications({ browserNotifications: checked })}
+                        onCheckedChange={checked =>
+                          updateNotifications({ browserNotifications: checked })
+                        }
                       />
                     </div>
 
@@ -443,11 +502,15 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Email Notifications</Label>
-                        <p className="text-sm text-muted-foreground">Send notifications to your email</p>
+                        <p className="text-sm text-muted-foreground">
+                          Send notifications to your email
+                        </p>
                       </div>
                       <Switch
                         checked={notifications.emailNotifications}
-                        onCheckedChange={(checked) => updateNotifications({ emailNotifications: checked })}
+                        onCheckedChange={checked =>
+                          updateNotifications({ emailNotifications: checked })
+                        }
                       />
                     </div>
                   </CardContent>
@@ -467,7 +530,7 @@ export default function SettingsPage() {
                       <Label>Theme</Label>
                       <Select
                         value={appearance.theme}
-                        onValueChange={(value) => updateAppearance({ theme: value as any })}
+                        onValueChange={value => updateAppearance({ theme: value as any })}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -483,12 +546,14 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                       <Label>Accent Color</Label>
                       <div className="flex gap-2">
-                        {accentColors.map((color) => (
+                        {accentColors.map(color => (
                           <button
                             key={color.value}
                             onClick={() => updateAppearance({ accentColor: color.value as any })}
                             className={`w-8 h-8 ${color.color} rounded-full border-2 ${
-                              appearance.accentColor === color.value ? "border-foreground" : "border-transparent"
+                              appearance.accentColor === color.value
+                                ? 'border-foreground'
+                                : 'border-transparent'
                             }`}
                           />
                         ))}
@@ -504,7 +569,7 @@ export default function SettingsPage() {
                       </div>
                       <Switch
                         checked={appearance.compactMode}
-                        onCheckedChange={(checked) => updateAppearance({ compactMode: checked })}
+                        onCheckedChange={checked => updateAppearance({ compactMode: checked })}
                       />
                     </div>
 
@@ -513,11 +578,13 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Show Animations</Label>
-                        <p className="text-sm text-muted-foreground">Enable smooth transitions and animations</p>
+                        <p className="text-sm text-muted-foreground">
+                          Enable smooth transitions and animations
+                        </p>
                       </div>
                       <Switch
                         checked={appearance.showAnimations}
-                        onCheckedChange={(checked) => updateAppearance({ showAnimations: checked })}
+                        onCheckedChange={checked => updateAppearance({ showAnimations: checked })}
                       />
                     </div>
                   </CardContent>
@@ -532,7 +599,7 @@ export default function SettingsPage() {
                       <Label>Number Format</Label>
                       <Select
                         value={appearance.numberFormat}
-                        onValueChange={(value) => updateAppearance({ numberFormat: value as any })}
+                        onValueChange={value => updateAppearance({ numberFormat: value as any })}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -549,7 +616,9 @@ export default function SettingsPage() {
                       <Label>Decimal Places</Label>
                       <Select
                         value={appearance.decimalPlaces.toString()}
-                        onValueChange={(value) => updateAppearance({ decimalPlaces: Number.parseInt(value) })}
+                        onValueChange={value =>
+                          updateAppearance({ decimalPlaces: Number.parseInt(value) })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -568,11 +637,13 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Show USD Values</Label>
-                        <p className="text-sm text-muted-foreground">Display USD equivalent for all tokens</p>
+                        <p className="text-sm text-muted-foreground">
+                          Display USD equivalent for all tokens
+                        </p>
                       </div>
                       <Switch
                         checked={appearance.showUsdValues}
-                        onCheckedChange={(checked) => updateAppearance({ showUsdValues: checked })}
+                        onCheckedChange={checked => updateAppearance({ showUsdValues: checked })}
                       />
                     </div>
                   </CardContent>
@@ -589,7 +660,7 @@ export default function SettingsPage() {
                       <Label>RPC Endpoint</Label>
                       <Select
                         value={advanced.rpcEndpoint}
-                        onValueChange={(value) => updateAdvanced({ rpcEndpoint: value })}
+                        onValueChange={value => updateAdvanced({ rpcEndpoint: value })}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -606,11 +677,11 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                       <Label>Slippage Tolerance (%)</Label>
                       <div className="flex gap-2">
-                        {[0.1, 0.5, 1.0, 3.0].map((value) => (
+                        {[0.1, 0.5, 1.0, 3.0].map(value => (
                           <Button
                             key={value}
                             size="sm"
-                            variant={advanced.slippageTolerance === value ? "default" : "outline"}
+                            variant={advanced.slippageTolerance === value ? 'default' : 'outline'}
                             onClick={() => updateAdvanced({ slippageTolerance: value })}
                           >
                             {value}%
@@ -622,8 +693,10 @@ export default function SettingsPage() {
                           type="number"
                           step="0.1"
                           value={advanced.slippageTolerance}
-                          onChange={(e) =>
-                            updateAdvanced({ slippageTolerance: Number.parseFloat(e.target.value) || 1.0 })
+                          onChange={e =>
+                            updateAdvanced({
+                              slippageTolerance: Number.parseFloat(e.target.value) || 1.0,
+                            })
                           }
                         />
                       </div>
@@ -636,8 +709,10 @@ export default function SettingsPage() {
                           className="w-20"
                           type="number"
                           value={advanced.transactionDeadline}
-                          onChange={(e) =>
-                            updateAdvanced({ transactionDeadline: Number.parseInt(e.target.value) || 20 })
+                          onChange={e =>
+                            updateAdvanced({
+                              transactionDeadline: Number.parseInt(e.target.value) || 20,
+                            })
                           }
                         />
                         <span className="text-sm text-muted-foreground">minutes</span>
@@ -649,11 +724,13 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Expert Mode</Label>
-                        <p className="text-sm text-muted-foreground">Enable advanced trading features</p>
+                        <p className="text-sm text-muted-foreground">
+                          Enable advanced trading features
+                        </p>
                       </div>
                       <Switch
                         checked={advanced.expertMode}
-                        onCheckedChange={(checked) => updateAdvanced({ expertMode: checked })}
+                        onCheckedChange={checked => updateAdvanced({ expertMode: checked })}
                       />
                     </div>
 
@@ -662,11 +739,13 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Debug Mode</Label>
-                        <p className="text-sm text-muted-foreground">Show additional debugging information</p>
+                        <p className="text-sm text-muted-foreground">
+                          Show additional debugging information
+                        </p>
                       </div>
                       <Switch
                         checked={advanced.debugMode}
-                        onCheckedChange={(checked) => updateAdvanced({ debugMode: checked })}
+                        onCheckedChange={checked => updateAdvanced({ debugMode: checked })}
                       />
                     </div>
                   </CardContent>
@@ -680,11 +759,13 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Analytics</Label>
-                        <p className="text-sm text-muted-foreground">Help improve the platform by sharing usage data</p>
+                        <p className="text-sm text-muted-foreground">
+                          Help improve the platform by sharing usage data
+                        </p>
                       </div>
                       <Switch
                         checked={advanced.analytics}
-                        onCheckedChange={(checked) => updateAdvanced({ analytics: checked })}
+                        onCheckedChange={checked => updateAdvanced({ analytics: checked })}
                       />
                     </div>
 
@@ -693,11 +774,13 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <Label>Crash Reports</Label>
-                        <p className="text-sm text-muted-foreground">Automatically send crash reports</p>
+                        <p className="text-sm text-muted-foreground">
+                          Automatically send crash reports
+                        </p>
                       </div>
                       <Switch
                         checked={advanced.crashReports}
-                        onCheckedChange={(checked) => updateAdvanced({ crashReports: checked })}
+                        onCheckedChange={checked => updateAdvanced({ crashReports: checked })}
                       />
                     </div>
 

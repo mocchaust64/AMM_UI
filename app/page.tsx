@@ -1,10 +1,10 @@
-import { Header } from "@/components/layout/header";
-import { Sidebar } from "@/components/layout/sidebar";
-import { MetricsCard } from "@/components/metrics-card";
-import { StatsChart } from "@/components/stats-chart";
-import { VaultTable } from "@/components/vault-table";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Header } from '@/components/layout/header'
+import { Sidebar } from '@/components/layout/sidebar'
+import { MetricsCard } from '@/components/metrics-card'
+import { StatsChart } from '@/components/stats-chart'
+import { VaultTable } from '@/components/vault-table'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 
 export default function DashboardPage() {
   return (
@@ -25,17 +25,17 @@ export default function DashboardPage() {
               <MetricsCard
                 title="Total Portfolio Value"
                 value="$74,892"
-                change={{ value: "$1,340", percentage: "+1.8%", isPositive: true }}
+                change={{ value: '$1,340', percentage: '+1.8%', isPositive: true }}
               />
               <MetricsCard
                 title="Active Positions"
                 value="12"
-                change={{ value: "2", percentage: "+20%", isPositive: true }}
+                change={{ value: '2', percentage: '+20%', isPositive: true }}
               />
               <MetricsCard
                 title="Total Rewards Earned"
                 value="$2,450"
-                change={{ value: "$125", percentage: "+5.4%", isPositive: true }}
+                change={{ value: '$125', percentage: '+5.4%', isPositive: true }}
               />
             </div>
 

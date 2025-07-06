@@ -1,0 +1,13 @@
+# Ignore artifacts
+.next
+out
+build
+dist
+node_modules
+coverage
+public
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+.env*
+!.env.example 
