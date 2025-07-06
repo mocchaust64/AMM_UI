@@ -1,3 +1,5 @@
+"use client"
+
 import { Header } from "@/components/layout/header"
 import { Sidebar } from "@/components/layout/sidebar"
 import { SwapInterface } from "@/components/swap/swap-interface"
