@@ -83,6 +83,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     try {
       let walletAddress = ''
       let publicKeyStr = ''
+      let phantomResponse
+      let solflareResponse
+      let backpackResponse
 
       switch (type) {
         case 'phantom':
@@ -91,7 +94,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
             throw new Error('Phantom wallet not found. Please install Phantom.')
           }
 
-          const phantomResponse = await window.solana.connect()
+          phantomResponse = await window.solana.connect()
           publicKeyStr = phantomResponse.publicKey.toString()
           walletAddress = publicKeyStr
           break
@@ -102,7 +105,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
             throw new Error('Solflare wallet not found. Please install Solflare.')
           }
 
-          const solflareResponse = await window.solflare.connect()
+          solflareResponse = await window.solflare.connect()
           publicKeyStr = solflareResponse.publicKey.toString()
           walletAddress = publicKeyStr
           break
@@ -113,7 +116,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
             throw new Error('Backpack wallet not found. Please install Backpack.')
           }
 
-          const backpackResponse = await window.backpack.connect()
+          backpackResponse = await window.backpack.connect()
           publicKeyStr = backpackResponse.publicKey.toString()
           walletAddress = publicKeyStr
           break
