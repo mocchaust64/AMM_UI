@@ -217,15 +217,15 @@ export async function getDetailTokenExtensions(mintAddress: string) {
       extensions: extensionTypes.map(type => ExtensionType[type]),
       transferHook: null,
     }
-  } catch (error) {
-    console.error('Error fetching token extensions:', error)
+  } catch (_error) {
+    console.error('Error fetching token extensions:', _error)
 
     // Trả về không có extensions khi gặp lỗi
     return {
       isToken2022: false,
       extensions: [],
       transferHook: null,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: _error instanceof Error ? _error.message : 'Unknown error',
     }
   }
 }
