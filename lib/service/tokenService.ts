@@ -1,4 +1,14 @@
 import { TokenInfo } from '@solana/spl-token-registry'
+import { Connection, PublicKey } from '@solana/web3.js'
+import {
+  getMint,
+  getExtensionTypes,
+  getTransferHook,
+  TOKEN_2022_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  ExtensionType,
+  getTokenMetadata,
+} from '@solana/spl-token'
 
 export class TokenService {
   private static tokenList: TokenInfo[] = []
@@ -21,6 +31,7 @@ export class TokenService {
             (token: TokenInfo) => token.chainId === 103 // 103 là chainId của Solana Devnet
           )
         : []
+      this.isInitialized = true
     } catch (error) {
       console.error('Failed to initialize TokenService:', error)
       // Fallback to common tokens on devnet
@@ -68,5 +79,153 @@ export class TokenService {
     }
 
     return this.tokenList
+  }
+
+  // Hàm lấy icon và tên của token từ mint address
+  static async getTokenIconAndName(
+    mintAddress: string,
+    connection?: Connection
+  ): Promise<{
+    name: string
+    symbol: string
+    icon: string
+  }> {
+    if (!this.isInitialized) {
+      await this.initialize()
+    }
+
+    // Tìm token trong danh sách có sẵn
+    const tokenInfo = this.tokenList.find(token => token.address === mintAddress)
+
+    if (tokenInfo) {
+      return {
+        name: tokenInfo.name,
+        symbol: tokenInfo.symbol,
+        icon: tokenInfo.logoURI || '/placeholder-logo.svg',
+      }
+    }
+
+    // Nếu không tìm thấy và có connection, thử lấy metadata từ token-2022
+    if (connection) {
+      try {
+        const mintPublicKey = new PublicKey(mintAddress)
+        const tokenMetadata = await getTokenMetadata(connection, mintPublicKey)
+
+        if (tokenMetadata) {
+          let metadataName = tokenMetadata.name || 'Unknown Token'
+          let metadataSymbol = tokenMetadata.symbol || 'UNKNOWN'
+          let metadataImage = '/placeholder-logo.svg'
+
+          // Nếu có URI, tải thêm thông tin hình ảnh
+          if (tokenMetadata.uri) {
+            try {
+              const response = await fetch(tokenMetadata.uri)
+              if (response.ok) {
+                const metadataJson = await response.json()
+
+                // Sử dụng dữ liệu từ URI nếu có
+                metadataName = metadataJson.name || metadataName
+                metadataSymbol = metadataJson.symbol || metadataSymbol
+                metadataImage = metadataJson.image || metadataImage
+              }
+            } catch (error) {
+              console.error(`Error fetching metadata from URI:`, error)
+            }
+          }
+
+          return {
+            name: metadataName,
+            symbol: metadataSymbol,
+            icon: metadataImage,
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching token metadata:', error)
+      }
+    }
+
+    // Fallback khi không tìm thấy thông tin
+    return {
+      name: 'Unknown Token',
+      symbol: mintAddress.slice(0, 4).toUpperCase(),
+      icon: '/placeholder-logo.svg',
+    }
+  }
+}
+
+/**
+ * Lấy thông tin về extensions của token (chỉ hoạt động với Token-2022)
+ * @param mintAddress Địa chỉ mint của token cần kiểm tra
+ * @returns Thông tin extensions và transferHook (nếu có)
+ */
+export async function getDetailTokenExtensions(mintAddress: string) {
+  try {
+    const connection = new Connection('https://api.devnet.solana.com', 'confirmed')
+    const mintPublicKey = new PublicKey(mintAddress)
+
+    // Trước tiên, kiểm tra xem token có phải là token-2022 hay không
+    try {
+      // Thử lấy thông tin token từ SPL Token program
+      await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
+
+      // Nếu lấy được thông tin từ SPL Token program, đây là token thường
+      // Trả về không có extensions
+      return {
+        isToken2022: false,
+        extensions: [],
+        transferHook: null,
+      }
+    } catch (error) {
+      // Nếu lỗi, có thể là token-2022 hoặc địa chỉ không hợp lệ
+      // Tiếp tục thử với TOKEN_2022_PROGRAM_ID
+    }
+
+    // Thử lấy thông tin từ Token-2022 program
+    const mintInfo = await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
+
+    // Nếu lấy được thông tin, đây là token-2022
+    if (!mintInfo.tlvData) {
+      return {
+        isToken2022: true,
+        extensions: [],
+        transferHook: null,
+      }
+    }
+
+    // Lấy danh sách extensions
+    const extensionTypes = getExtensionTypes(mintInfo.tlvData)
+
+    // Kiểm tra xem có TransferHook không
+    if (extensionTypes.includes(ExtensionType.TransferHook)) {
+      const transferHookData = getTransferHook(mintInfo)
+
+      if (transferHookData) {
+        return {
+          isToken2022: true,
+          extensions: extensionTypes.map(type => ExtensionType[type]),
+          transferHook: {
+            authority: transferHookData.authority ? transferHookData.authority.toBase58() : 'None',
+            programId: transferHookData.programId ? transferHookData.programId.toBase58() : 'None',
+          },
+        }
+      }
+    }
+
+    // Trường hợp có extensions nhưng không có TransferHook
+    return {
+      isToken2022: true,
+      extensions: extensionTypes.map(type => ExtensionType[type]),
+      transferHook: null,
+    }
+  } catch (error) {
+    console.error('Error fetching token extensions:', error)
+
+    // Trả về không có extensions khi gặp lỗi
+    return {
+      isToken2022: false,
+      extensions: [],
+      transferHook: null,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
   }
 }

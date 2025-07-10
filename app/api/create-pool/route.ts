@@ -7,12 +7,15 @@ import {
   SystemProgram,
   ComputeBudgetProgram,
   VersionedTransaction,
+  sendAndConfirmTransaction,
 } from '@solana/web3.js'
 import { Program, BN, AnchorProvider } from '@coral-xyz/anchor'
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountInstruction,
 } from '@solana/spl-token'
 import * as anchor from '@coral-xyz/anchor'
 import * as fs from 'fs'
@@ -175,10 +178,7 @@ export async function POST(request: NextRequest) {
       )
 
       // Tạo LP token address
-      let creatorLpTokenAddressPubkey
-
-      // Dù client có gửi giá trị này hay không, server luôn tính toán lại
-      const serverCalculatedLpTokenAddress = PublicKey.findProgramAddressSync(
+      const creatorLpTokenAddressPubkey = PublicKey.findProgramAddressSync(
         [
           new PublicKey(creatorPublicKey).toBuffer(),
           TOKEN_PROGRAM_ID.toBuffer(),
@@ -186,9 +186,6 @@ export async function POST(request: NextRequest) {
         ],
         ASSOCIATED_TOKEN_PROGRAM_ID
       )[0]
-
-      // Sử dụng giá trị đã tính toán ở server
-      creatorLpTokenAddressPubkey = serverCalculatedLpTokenAddress
 
       // Luôn thêm tất cả các tài khoản cho cả hai token, dù có transfer hook hay không
       const remainingAccounts = [

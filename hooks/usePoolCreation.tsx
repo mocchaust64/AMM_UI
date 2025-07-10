@@ -5,12 +5,7 @@ import * as anchor from '@coral-xyz/anchor'
 import { RaydiumCpSwap } from '../idl/types/raydium_cp_swap'
 import idl from '../idl/raydium_cp_swap.json'
 import { toast } from '@/components/ui/use-toast'
-import {
-  TOKEN_PROGRAM_ID,
-  TOKEN_2022_PROGRAM_ID,
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-} from '@solana/spl-token'
-import { createAssociatedTokenAccountInstruction } from '@solana/spl-token'
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token'
 
 // Constant
 const TRANSFER_HOOK_PROGRAM_ID = new PublicKey('12BZr6af3s7qf7GGmhBvMd46DWmVNhHfXmCwftfMk1mZ')
@@ -21,6 +16,7 @@ const isValidBase58 = (value: string): boolean => {
     new PublicKey(value)
     return true
   } catch (error) {
+    console.error(`Invalid base58 string: ${value}`, error)
     return false
   }
 }
@@ -185,31 +181,10 @@ export function usePoolCreation() {
         program.programId
       )
 
-      // Tính toán LP token address theo đúng cách - sử dụng findProgramAddressSync
-      // để đảm bảo nhất quán với server
       const creatorLpTokenAddress = PublicKey.findProgramAddressSync(
         [publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), lpMintAddress.toBuffer()],
         ASSOCIATED_TOKEN_PROGRAM_ID
       )[0]
-
-      // Tính trước các PDA của transfer hook để kiểm tra
-      const [whitelistPDA_token0] = PublicKey.findProgramAddressSync(
-        [Buffer.from('white_list'), finalToken0Mint.toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
-      )
-      const [extraAccountMetaListPDA_token0] = PublicKey.findProgramAddressSync(
-        [Buffer.from('extra-account-metas'), finalToken0Mint.toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
-      )
-
-      const [whitelistPDA_token1] = PublicKey.findProgramAddressSync(
-        [Buffer.from('white_list'), finalToken1Mint.toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
-      )
-      const [extraAccountMetaListPDA_token1] = PublicKey.findProgramAddressSync(
-        [Buffer.from('extra-account-metas'), finalToken1Mint.toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
-      )
 
       // Gọi API để tạo và ký transaction với pool keypair
       const response = await fetch('/api/create-pool', {
@@ -240,17 +215,6 @@ export function usePoolCreation() {
       if (!apiResponse.success || !apiResponse.serializedTransaction) {
         throw new Error('API returned an invalid response')
       }
-
-      // Tính toán lại LP token address với pool address thực tế từ API response
-      const actualPoolAddress = new PublicKey(apiResponse.poolAddress)
-      const actualLpMintAddress = new PublicKey(apiResponse.lpMintAddress)
-
-      // Tính LP token address theo cùng một cách với server
-      const actualCreatorLpTokenAddress = PublicKey.findProgramAddressSync(
-        [publicKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), actualLpMintAddress.toBuffer()],
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      )[0]
-
       // Deserialize transaction từ base64
       const serializedTransaction = Buffer.from(apiResponse.serializedTransaction, 'base64')
       const transaction = Transaction.from(serializedTransaction)
@@ -312,6 +276,7 @@ export function usePoolCreation() {
             }
           }
         } catch (txInfoError) {
+          console.error('Error fetching transaction info:', txInfoError)
           throw confirmError
         }
 

@@ -3,18 +3,13 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
-  BarChart3,
-  Globe,
   LayoutDashboard,
   LifeBuoy,
   Settings,
   Wallet,
   ArrowLeftRight,
   Droplets,
-  TrendingUp,
-  PieChart,
   Search,
-  Coins,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -24,11 +19,6 @@ const navigation = [
   { name: 'nav.dashboard', href: '/', icon: LayoutDashboard },
   { name: 'nav.swap', href: '/swap', icon: ArrowLeftRight },
   { name: 'nav.liquidity', href: '/liquidity', icon: Droplets },
-  { name: 'nav.farming', href: '/farming', icon: TrendingUp },
-  { name: 'nav.trading', href: '/trading', icon: BarChart3 },
-  { name: 'nav.portfolio', href: '/portfolio', icon: PieChart },
-  { name: 'nav.analytics', href: '/analytics', icon: Globe },
-  { name: 'nav.tokens', href: '/tokens', icon: Coins },
 ]
 
 export function Sidebar() {

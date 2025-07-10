@@ -391,6 +391,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                     onChange={value => setTokenAMint(value)}
                     excludeToken={tokenBMint}
                     placeholder="Select token A"
+                    includeSol={false}
                   />
                 </div>
 
@@ -401,6 +402,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                     onChange={value => setTokenBMint(value)}
                     excludeToken={tokenAMint}
                     placeholder="Select token B"
+                    includeSol={false}
                   />
                 </div>
               </div>

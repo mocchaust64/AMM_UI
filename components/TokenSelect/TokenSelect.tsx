@@ -13,13 +13,16 @@ import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { useWalletTokens } from '@/hooks/useWalletTokens'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import Image from 'next/image'
 
-interface TokenSelectProps {
+export interface TokenSelectProps {
   value?: string
   onChange?: (value: string) => void
   excludeToken?: string
   label?: string
   placeholder?: string
+  disabled?: boolean
+  includeSol?: boolean
 }
 
 export function TokenSelect({
@@ -28,17 +31,16 @@ export function TokenSelect({
   excludeToken,
   label = 'Select a token',
   placeholder = 'Select token',
+  disabled = false,
+  includeSol = false,
 }: TokenSelectProps) {
-  const { tokens, loading } = useWalletTokens()
+  const { tokens, loading } = useWalletTokens({ includeSol })
   const [searchQuery, setSearchQuery] = useState('')
 
   // Debug log
   useEffect(() => {
     console.log('TokenSelect - tokens:', tokens)
-    console.log('TokenSelect - loading:', loading)
-    console.log('TokenSelect - value:', value)
-    console.log('TokenSelect - excludeToken:', excludeToken)
-  }, [tokens, loading, value, excludeToken])
+  }, [tokens])
 
   const filteredTokens = useMemo(() => {
     const filtered = tokens
@@ -58,12 +60,10 @@ export function TokenSelect({
         )
       })
 
-    console.log('TokenSelect - filteredTokens:', filtered)
     return filtered
   }, [tokens, searchQuery, excludeToken])
 
   const handleSelect = (tokenMint: string) => {
-    console.log('TokenSelect - selected token mint:', tokenMint)
     if (onChange) {
       onChange(tokenMint)
     }
@@ -72,21 +72,36 @@ export function TokenSelect({
   const selectedToken = useMemo(() => {
     if (!value) return null
     const found = tokens.find(token => token.mint === value)
-    console.log('TokenSelect - selectedToken:', found)
     return found
   }, [value, tokens])
 
+  // Hàm rút gọn địa chỉ
+  const shortenAddress = (address: string) => {
+    if (!address || address === 'SOL') return address
+    return `${address.slice(0, 5)}...${address.slice(-4)}`
+  }
+
   return (
-    <Select value={value} onValueChange={handleSelect}>
+    <Select value={value} onValueChange={handleSelect} disabled={disabled}>
       <SelectTrigger className="w-full">
         <SelectValue placeholder={placeholder}>
           {selectedToken && (
             <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={selectedToken.icon || '/placeholder.svg'} />
-                <AvatarFallback>{selectedToken.symbol.slice(0, 2)}</AvatarFallback>
+              <Avatar className="h-6 w-6 rounded-full overflow-hidden">
+                {selectedToken.icon ? (
+                  <AvatarImage src={selectedToken.icon} alt={selectedToken.symbol} />
+                ) : (
+                  <AvatarFallback className="bg-gradient-to-r from-blue-400 to-blue-600 text-white">
+                    {selectedToken.symbol.slice(0, 2)}
+                  </AvatarFallback>
+                )}
               </Avatar>
               <span className="font-medium">{selectedToken.symbol}</span>
+              {selectedToken.isToken2022 && (
+                <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">
+                  2022
+                </span>
+              )}
             </div>
           )}
         </SelectValue>
@@ -104,7 +119,7 @@ export function TokenSelect({
             />
           </div>
 
-          <ScrollArea className="h-60">
+          <ScrollArea className="h-60 custom-scroll">
             {loading ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
                 Loading tokens...
@@ -115,19 +130,41 @@ export function TokenSelect({
               <div className="space-y-1">
                 {filteredTokens.map(token => (
                   <SelectItem key={token.mint} value={token.mint} className="cursor-pointer">
-                    <div className="flex items-center justify-between w-full py-1">
+                    <div className="flex items-center justify-between w-full py-2 hover:bg-gray-100 rounded-lg transition-colors">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={token.icon || '/placeholder.svg'} />
-                          <AvatarFallback>{token.symbol.slice(0, 2)}</AvatarFallback>
-                        </Avatar>
+                        <div className="h-8 w-8 rounded-full overflow-hidden bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-center">
+                          {token.icon ? (
+                            <Image
+                              src={token.icon}
+                              alt={token.symbol}
+                              width={32}
+                              height={32}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-white font-semibold text-sm">
+                              {token.symbol.slice(0, 2)}
+                            </div>
+                          )}
+                        </div>
+
                         <div>
-                          <div className="font-medium">{token.symbol}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium">{token.symbol}</div>
+                            {token.isToken2022 && (
+                              <span className="text-xs bg-purple-100 text-purple-700 px-1 py-0.5 rounded-full font-medium">
+                                2022
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground">{token.name}</div>
+                          <div className="text-xs text-muted-foreground/70">
+                            {shortenAddress(token.mint)}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="text-right">
+                      <div className="text-right pr-2">
                         <div className="font-medium">{token.balance.toLocaleString()}</div>
                         {token.balance > 0 && (
                           <div className="text-xs text-muted-foreground">

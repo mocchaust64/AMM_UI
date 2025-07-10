@@ -408,6 +408,75 @@ async function initializeWhitelistAndAddAddress(
   }
 }
 
+// Hàm để log ra các địa chỉ trong whitelist
+async function logWhitelistAddresses(connection: Connection, mint: PublicKey) {
+  console.log(
+    `\n=== Danh sách địa chỉ trong whitelist của token ${mint.toString().slice(0, 8)}... ===`
+  )
+
+  try {
+    // Tính PDA cho whitelist
+    const [whitelistPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from('white_list'), mint.toBuffer()],
+      TRANSFER_HOOK_PROGRAM_ID
+    )
+
+    // Lấy dữ liệu của tài khoản whitelist
+    const whitelistAccount = await connection.getAccountInfo(whitelistPDA)
+
+    if (!whitelistAccount) {
+      console.log('Không tìm thấy tài khoản whitelist hoặc chưa được khởi tạo')
+      return
+    }
+
+    console.log(`Whitelist PDA: ${whitelistPDA.toString()}`)
+
+    // Đọc dữ liệu whitelist dưới dạng raw bytes
+    // Chúng ta sẽ cố gắng tìm các địa chỉ có kích thước 32 bytes trong dữ liệu
+    const data = whitelistAccount.data
+    console.log(`Kích thước dữ liệu whitelist: ${data.length} bytes`)
+
+    // Thử tìm các địa chỉ 32-byte sau đoạn dữ liệu đầu tiên
+    // Anchor thường có 8 byte discriminator đầu tiên
+    const possibleAddresses = []
+
+    // Bắt đầu từ byte thứ 16 (sau discriminator và counter)
+    let offset = 16
+    while (offset + 32 <= data.length) {
+      // Lấy 32 byte tiếp theo làm địa chỉ
+      const addressBytes = data.slice(offset, offset + 32)
+
+      // Kiểm tra xem có phải toàn số 0 không (trường hợp bộ nhớ chưa được sử dụng)
+      const isAllZeros = addressBytes.every(byte => byte === 0)
+
+      if (!isAllZeros) {
+        try {
+          const address = new PublicKey(addressBytes)
+          possibleAddresses.push(address.toString())
+        } catch (e) {
+          // Không phải địa chỉ hợp lệ, bỏ qua
+        }
+      }
+
+      offset += 32
+    }
+
+    if (possibleAddresses.length > 0) {
+      console.log(`Tìm thấy ${possibleAddresses.length} địa chỉ tiềm năng trong whitelist:`)
+      possibleAddresses.forEach((address, i) => {
+        console.log(`Địa chỉ ${i + 1}: ${address}`)
+      })
+    } else {
+      console.log('Không tìm thấy địa chỉ nào trong whitelist hoặc định dạng dữ liệu không đúng.')
+    }
+
+    return possibleAddresses
+  } catch (error) {
+    console.error('Lỗi khi đọc whitelist:', error)
+    return []
+  }
+}
+
 // Hàm khởi tạo pool
 async function initializePool(
   program: Program<RaydiumCpSwap>,
@@ -1135,6 +1204,10 @@ async function main() {
         await initializeWhitelistAndAddAddress(connection, payer, token1Mint, wallet.publicKey)
       }
 
+      // Kiểm tra whitelist trước khi tạo pool
+      console.log('\n=== Whitelist trước khi khởi tạo pool ===')
+      await logWhitelistAddresses(connection, hookTokenMint)
+
       // Khởi tạo pool (vault owner sẽ được tự động thêm vào whitelist bởi smart contract)
       const poolInfo = await initializePool(
         program,
@@ -1149,6 +1222,10 @@ async function main() {
       )
 
       console.log('=== HOÀN TẤT TẠO POOL VỚI TOKEN CÓ TRANSFER HOOK ===')
+
+      // Kiểm tra whitelist sau khi tạo pool để xem vault đã được thêm vào chưa
+      console.log('\n=== Whitelist sau khi khởi tạo pool ===')
+      await logWhitelistAddresses(connection, hookTokenMint)
 
       // Đợi một chút trước khi thực hiện swap
       console.log('Đợi 5 giây trước khi thực hiện swap...')
