@@ -4,13 +4,46 @@
 import { TokenService, getDetailTokenExtensions } from './tokenService'
 import { Connection } from '@solana/web3.js'
 
+// Interfaces cho token trong pool
+export interface GithubTokenInfo {
+  mint?: string
+  symbol?: string
+  name?: string
+  decimals?: number
+  icon?: string
+  isToken2022?: boolean
+  hasTransferHook?: boolean
+}
+
+// Interface cho pool từ GitHub
+export interface GithubPoolInfo {
+  poolAddress: string
+  token0?: GithubTokenInfo
+  token1?: GithubTokenInfo
+  network?: string
+  githubUrl?: string
+  createdAt?: string
+  lastUpdated?: string
+}
+
+// Interface cho thông tin extension token
+export interface TokenExtensionInfo {
+  isToken2022?: boolean
+  transferHook?: {
+    authority?: string
+    programId?: string
+  } | null
+  extensions?: string[]
+  error?: string
+}
+
 export class GithubPoolService {
   /**
    * Lấy danh sách tất cả các pool từ GitHub
    * @param retryCount Số lần thử lại nếu có lỗi
    * @returns Danh sách pool
    */
-  static async getAllPools(retryCount = 2): Promise<any[]> {
+  static async getAllPools(retryCount = 2): Promise<GithubPoolInfo[]> {
     try {
       const response = await fetch('/api/get-pools-from-github', {
         method: 'GET',
@@ -30,7 +63,7 @@ export class GithubPoolService {
 
       const data = await response.json().catch(() => ({ pools: [] }))
       return data.pools || []
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching pools from GitHub:', error)
 
       // Thử lại nếu còn số lần thử
@@ -50,14 +83,14 @@ export class GithubPoolService {
    * @param retryCount Số lần thử lại nếu có lỗi
    * @returns Thông tin chi tiết của pool
    */
-  static async getPoolDetails(poolAddress: string, retryCount = 2): Promise<any | null> {
+  static async getPoolDetails(poolAddress: string, retryCount = 2): Promise<GithubPoolInfo | null> {
     try {
       if (!poolAddress) {
         throw new Error('Pool address is required')
       }
 
       const pools = await this.getAllPools()
-      return pools.find((pool: any) => pool?.poolAddress === poolAddress) || null
+      return pools.find((pool: GithubPoolInfo) => pool?.poolAddress === poolAddress) || null
     } catch (error) {
       console.error(`Error fetching pool details for ${poolAddress}:`, error)
 
@@ -79,9 +112,9 @@ export class GithubPoolService {
    */
   static async enrichTokenInfo(
     tokenMint: string,
-    existingTokenInfo: any = {},
+    existingTokenInfo: GithubTokenInfo = {},
     connection?: Connection
-  ) {
+  ): Promise<GithubTokenInfo> {
     if (!connection) {
       connection = new Connection(
         process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com',
@@ -131,7 +164,7 @@ export class GithubPoolService {
    * Làm giàu thông tin của tất cả token trong một pool
    * @param poolInfo Thông tin pool từ GitHub
    */
-  static async enrichPoolTokenInfo(poolInfo: any) {
+  static async enrichPoolTokenInfo(poolInfo: GithubPoolInfo) {
     if (!poolInfo) return null
 
     const connection = new Connection(
@@ -167,7 +200,7 @@ export class GithubPoolService {
    * @param pools Danh sách pool từ GitHub
    * @param limit Giới hạn số lượng pool cần làm giàu thông tin (để tránh quá tải)
    */
-  static async enrichPoolsTokenInfo(pools: any[], limit = 10) {
+  static async enrichPoolsTokenInfo(pools: GithubPoolInfo[], limit = 10) {
     if (!pools || pools.length === 0) return []
 
     // Giới hạn số lượng pool để tránh quá tải
@@ -184,7 +217,7 @@ export class GithubPoolService {
    * Lấy danh sách tất cả các token có trong các pool từ GitHub
    * @returns Danh sách token duy nhất từ tất cả các pool
    */
-  static async getAllPoolTokens(): Promise<any[]> {
+  static async getAllPoolTokens(): Promise<GithubTokenInfo[]> {
     try {
       // Lấy danh sách pool từ GitHub
       const pools = await this.getAllPools()

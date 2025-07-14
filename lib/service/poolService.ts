@@ -5,12 +5,23 @@ import { TokenService } from './tokenService'
 
 interface PoolInfo {
   poolAddress: PublicKey
-  poolInfo: any
+  poolInfo: PoolState
   token0Mint: PublicKey
   token1Mint: PublicKey
   token0Balance?: number
   token1Balance?: number
   ammConfig: PublicKey
+}
+
+// Interface cho PoolState từ program account
+interface PoolState {
+  token0Mint: PublicKey
+  token1Mint: PublicKey
+  token0Vault: PublicKey
+  token1Vault: PublicKey
+  ammConfig: PublicKey
+  lpMint: PublicKey
+  [key: string]: any // Cho phép các thuộc tính khác
 }
 
 // Thông tin chi tiết hơn cho pool, bao gồm tên token, biểu tượng

@@ -42,42 +42,42 @@ function getServerKeypair(): Keypair {
 }
 
 // Hàm để upload thông tin pool lên GitHub
-async function uploadPoolToGithub(poolData: Record<string, unknown>) {
-  try {
-    // Xác định URL API endpoint
-    // Khi chạy trong Next.js API route, chúng ta cần một URL tuyệt đối
-    const apiUrl = 'http://localhost:3000/api/upload-pool-to-github'
+// async function uploadPoolToGithub(poolData: Record<string, unknown>) {
+//   try {
+//     // Xác định URL API endpoint
+//     // Khi chạy trong Next.js API route, chúng ta cần một URL tuyệt đối
+//     const apiUrl = 'http://localhost:3000/api/upload-pool-to-github'
 
-    // Gọi API upload-pool-to-github
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(poolData),
-    })
+//     // Gọi API upload-pool-to-github
+//     const response = await fetch(apiUrl, {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//       body: JSON.stringify(poolData),
+//     })
 
-    // Kiểm tra kết quả
-    if (!response.ok) {
-      let errorMessage
-      try {
-        const errorData = await response.json()
-        errorMessage = errorData.error || response.statusText
-      } catch {
-        errorMessage = response.statusText
-      }
-      return { success: false, error: errorMessage }
-    }
+//     // Kiểm tra kết quả
+//     if (!response.ok) {
+//       let errorMessage
+//       try {
+//         const errorData = await response.json()
+//         errorMessage = errorData.error || response.statusText
+//       } catch {
+//         errorMessage = response.statusText
+//       }
+//       return { success: false, error: errorMessage }
+//     }
 
-    const result = await response.json()
-    return { success: true, data: result }
-  } catch (uploadError: unknown) {
-    return {
-      success: false,
-      error: uploadError instanceof Error ? uploadError.message : String(uploadError),
-    }
-  }
-}
+//     const result = await response.json()
+//     return { success: true, data: result }
+//   } catch (uploadError: unknown) {
+//     return {
+//       success: false,
+//       error: uploadError instanceof Error ? uploadError.message : String(uploadError),
+//     }
+//   }
+// }
 
 export async function POST(request: NextRequest) {
   try {

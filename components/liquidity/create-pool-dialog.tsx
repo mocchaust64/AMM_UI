@@ -26,6 +26,16 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { getDetailTokenExtensions } from '@/lib/service/tokenService'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
+// Định nghĩa interface cho thông tin token
+interface TokenInfo {
+  isToken2022?: boolean
+  transferHook?: {
+    authority?: string
+    programId?: string
+  } | null
+  extensions?: string[]
+}
+
 interface CreatePoolDialogProps {
   _open: boolean
   onOpenChange: (_open: boolean) => void
@@ -284,8 +294,8 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
   const [creatingPool, setCreatingPool] = useState(false)
 
   // State để lưu thông tin chi tiết về token extensions
-  const [tokenAInfo, setTokenAInfo] = useState<any>(null)
-  const [tokenBInfo, setTokenBInfo] = useState<any>(null)
+  const [tokenAInfo, setTokenAInfo] = useState<TokenInfo | null>(null)
+  const [tokenBInfo, setTokenBInfo] = useState<TokenInfo | null>(null)
 
   // Thêm state cho dialog thành công
   const [successDialogOpen, setSuccessDialogOpen] = useState(false)
@@ -349,7 +359,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
   }
 
   // Hiển thị badge dựa trên loại token
-  const renderTokenTypeBadge = (tokenInfo: any) => {
+  const renderTokenTypeBadge = (tokenInfo: TokenInfo | null) => {
     if (!tokenInfo) return null
 
     return (
@@ -376,7 +386,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
   const handleConnectWallet = async () => {
     try {
       setVisible(true)
-    } catch (error) {
+    } catch {
       toast.error('Failed to open wallet selector. Please try again.')
     }
   }
@@ -430,8 +440,9 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
 
       // Mở dialog thành công
       setSuccessDialogOpen(true)
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create pool')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create pool'
+      toast.error(errorMessage)
     } finally {
       setCreatingPool(false)
     }

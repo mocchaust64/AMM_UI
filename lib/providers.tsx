@@ -28,7 +28,7 @@ export function SolanaProviders({ children }: { children: ReactNode }) {
   // Thiết lập các wallet adapters
   const wallets = useMemo(
     () => [new PhantomWalletAdapter(), new SolflareWalletAdapter(), new CoinbaseWalletAdapter()],
-    []
+    [network]
   )
 
   return (

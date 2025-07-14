@@ -115,12 +115,12 @@ export class TokenService {
         try {
           await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
           isToken2022 = false
-        } catch (error) {
+        } catch (_error) {
           try {
             await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
             isToken2022 = true
-          } catch (error) {
-            console.error('Error determining token type:', error)
+          } catch (_error) {
+            console.error('Error determining token type:', _error)
             // Không phải token hợp lệ, trả về thông tin mặc định
             return {
               name: 'Unknown Token',
@@ -182,8 +182,8 @@ export class TokenService {
             icon: metadataImage,
           }
         }
-      } catch (error) {
-        console.error('Error in getTokenIconAndName:', error)
+      } catch (_error) {
+        console.error('Error in getTokenIconAndName:', _error)
       }
     }
 
@@ -218,7 +218,7 @@ export async function getDetailTokenExtensions(mintAddress: string) {
         extensions: [],
         transferHook: null,
       }
-    } catch (error) {
+    } catch (_error) {
       // Nếu lỗi, có thể là token-2022 hoặc địa chỉ không hợp lệ
       // Tiếp tục thử với TOKEN_2022_PROGRAM_ID
     }

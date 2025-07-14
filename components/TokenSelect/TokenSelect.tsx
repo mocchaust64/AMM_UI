@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
 import { getDetailTokenExtensions } from '@/lib/service/tokenService'
-import { GithubPoolService } from '@/lib/service/githubPoolService'
+import { GithubPoolService, GithubTokenInfo } from '@/lib/service/githubPoolService'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
 import { TokenData } from '@/hooks/useWalletTokens'
@@ -265,7 +265,24 @@ export function PoolTokenSelect({
       setLoading(true)
       try {
         const poolTokens = await GithubPoolService.getAllPoolTokens()
-        setTokens(poolTokens)
+        // Chuyển đổi GithubTokenInfo thành ExtendedTokenData
+        const extendedTokens: ExtendedTokenData[] = poolTokens
+          .filter(
+            (token): token is Required<Pick<GithubTokenInfo, 'mint'>> & GithubTokenInfo =>
+              !!token.mint
+          )
+          .map(token => ({
+            mint: token.mint,
+            symbol: token.symbol || token.mint.slice(0, 4).toUpperCase(),
+            name: token.name || `Token ${token.mint.slice(0, 8)}`,
+            icon: token.icon,
+            balance: 0, // Thiết lập balance = 0 cho token từ pool
+            decimals: token.decimals || 9,
+            address: '', // Không có địa chỉ token account
+            isToken2022: token.isToken2022 || false,
+            hasTransferHook: token.hasTransferHook || false,
+          }))
+        setTokens(extendedTokens)
       } catch (error) {
         console.error('Error fetching pool tokens:', error)
       } finally {

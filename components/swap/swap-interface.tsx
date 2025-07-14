@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -19,7 +19,7 @@ import { Program } from '@coral-xyz/anchor'
 import { RaydiumCpSwap } from '../../idl/types/raydium_cp_swap'
 import { useAnchorProvider } from '@/hooks/useAnchorProvider'
 import { PoolFinder, PoolInfo, AmmConfigInfo } from '@/lib/utils/pool-finder'
-import { GithubPoolService } from '@/lib/service/githubPoolService'
+import { GithubPoolService, GithubPoolInfo } from '@/lib/service/githubPoolService'
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,9 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
+// Sử dụng lại type từ githubPoolService
+type SwapGithubPool = GithubPoolInfo
 
 export interface SwapInterfaceProps {
   onFromTokenChange?: (tokenMint: string) => void
@@ -64,11 +67,11 @@ export function SwapInterface({
   const [swapping, setSwapping] = useState(false)
   const [searchingPool, setSearchingPool] = useState(false)
   const [currentPool, setCurrentPool] = useState<PoolInfo | null>(null)
-  const [ammConfigInfo, setAmmConfigInfo] = useState<AmmConfigInfo | null>(null)
+  const [_ammConfigInfo, setAmmConfigInfo] = useState<AmmConfigInfo | null>(null)
 
   // State cho chức năng chọn pool từ GitHub
-  const [githubPools, setGithubPools] = useState<any[]>([])
-  const [enrichedPools, setEnrichedPools] = useState<any[]>([]) // State mới để lưu pools có thông tin phong phú
+  const [githubPools, setGithubPools] = useState<SwapGithubPool[]>([])
+  const [enrichedPools, setEnrichedPools] = useState<SwapGithubPool[]>([]) // State mới để lưu pools có thông tin phong phú
   const [loadingGithubPools, setLoadingGithubPools] = useState(false)
   const [enrichingPools, setEnrichingPools] = useState(false) // State mới để theo dõi quá trình làm giàu thông tin
   const [poolSearchTerm, setPoolSearchTerm] = useState('')
@@ -89,15 +92,24 @@ export function SwapInterface({
   }, [toTokenMint, onToTokenChange])
 
   // Tạo RPC connection
-  const connection = new Connection(
-    process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com',
-    'confirmed'
+  const connection = useMemo(
+    () =>
+      new Connection(
+        process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com',
+        'confirmed'
+      ),
+    []
   )
 
   // Sử dụng program từ hook hoặc khởi tạo nếu cần
   const raydiumProgram = program as Program<RaydiumCpSwap>
   const swapService = new SwapService(raydiumProgram, connection)
-  const poolFinder = new PoolFinder(raydiumProgram, connection)
+
+  // Bọc poolFinder trong useMemo để tránh tạo lại mỗi lần render
+  const poolFinder = useMemo(
+    () => new PoolFinder(raydiumProgram, connection),
+    [raydiumProgram, connection]
+  )
 
   // Get selected tokens from mints
   const fromToken = tokens.find(token => token.mint === fromTokenMint)
@@ -118,7 +130,9 @@ export function SwapInterface({
         setEnrichingPools(true)
         // Chỉ làm giàu tối đa 15 pools để tránh quá tải
         const enriched = await GithubPoolService.enrichPoolsTokenInfo(pools, 15)
-        setEnrichedPools(enriched)
+        // Filter out null values
+        const filteredEnriched = enriched.filter((pool): pool is SwapGithubPool => pool !== null)
+        setEnrichedPools(filteredEnriched)
         setEnrichingPools(false)
       }
     } catch (error) {
@@ -217,10 +231,10 @@ export function SwapInterface({
     }
 
     findPool()
-  }, [fromTokenMint, toTokenMint, raydiumProgram])
+  }, [fromTokenMint, toTokenMint, raydiumProgram, poolFinder])
 
   // Hàm để chọn pool từ GitHub
-  const selectGithubPool = async (pool: any) => {
+  const selectGithubPool = async (pool: SwapGithubPool) => {
     if (!pool || !pool.poolAddress) {
       toast.error('Pool không hợp lệ')
       return
@@ -237,7 +251,10 @@ export function SwapInterface({
       // Nếu pool chưa được làm giàu thông tin, thực hiện trước khi sử dụng
       let poolWithTokenInfo = pool
       if (!pool.token0?.icon || !pool.token1?.icon) {
-        poolWithTokenInfo = await GithubPoolService.enrichPoolTokenInfo(pool)
+        const enrichedPool = await GithubPoolService.enrichPoolTokenInfo(pool)
+        if (enrichedPool !== null) {
+          poolWithTokenInfo = enrichedPool
+        }
       }
 
       // Đặt token mints từ pool đã làm giàu thông tin
@@ -296,7 +313,7 @@ export function SwapInterface({
     } finally {
       setCalculating(false)
     }
-  }, [fromAmount, fromToken, toToken, provider, poolAddress, currentPool])
+  }, [fromAmount, fromToken, toToken, provider, poolAddress, currentPool, poolFinder])
 
   useEffect(() => {
     if (fromAmount && Number(fromAmount) > 0 && fromToken && toToken && currentPool) {
@@ -305,7 +322,7 @@ export function SwapInterface({
       setToAmount('')
       setSwapData(null)
     }
-  }, [fromAmount, fromToken, toToken, currentPool, calculateSwap])
+  }, [fromAmount, fromToken, toToken, currentPool, calculateSwap, poolFinder])
 
   const handleSwapTokens = () => {
     const tempTokenMint = fromTokenMint
@@ -384,11 +401,11 @@ export function SwapInterface({
     return `${address.slice(0, 6)}...${address.slice(-4)}`
   }
 
-  // Hàm tìm pool đã làm giàu thông tin
-  const getEnrichedPool = (poolAddress: string) => {
+  // Hàm tìm pool đã được làm giàu thông tin
+  const getEnrichedPool = (poolAddress: string): SwapGithubPool | undefined => {
     return (
-      enrichedPools.find(p => p?.poolAddress === poolAddress) ||
-      githubPools.find(p => p?.poolAddress === poolAddress)
+      enrichedPools.find(p => p.poolAddress === poolAddress) ||
+      githubPools.find(p => p.poolAddress === poolAddress)
     )
   }
 

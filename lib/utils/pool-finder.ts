@@ -10,7 +10,18 @@ export interface PoolInfo {
   ammConfig: PublicKey
   token0Balance?: number
   token1Balance?: number
-  poolState?: any
+  poolState?: PoolState
+}
+
+// Interface cho PoolState từ program account
+export interface PoolState {
+  token0Mint: PublicKey
+  token1Mint: PublicKey
+  token0Vault: PublicKey
+  token1Vault: PublicKey
+  ammConfig: PublicKey
+  lpMint: PublicKey
+  [key: string]: any // Cho phép các thuộc tính khác
 }
 
 // Interface cho thông tin AMM Config
@@ -18,6 +29,19 @@ export interface AmmConfigInfo {
   tradeFeeRate: number // Phí giao dịch, cần chia cho 10000 để có %
   protocolFeeRate: number // % của phí giao dịch dành cho protocol
   fundFeeRate: number // % của phí giao dịch dành cho fund
+}
+
+// Interface cho AmmConfig từ program
+export interface AmmConfigData {
+  tradeFeeRate: {
+    toNumber: () => number
+  }
+  protocolFeeRate: {
+    toNumber: () => number
+  }
+  fundFeeRate: {
+    toNumber: () => number
+  }
 }
 
 export class PoolFinder {
@@ -44,17 +68,14 @@ export class PoolFinder {
     ammConfigAddress?: PublicKey
   ): Promise<PoolInfo | null> {
     try {
-      console.log(`Tìm pool cho token ${token0Mint.toString()} và ${token1Mint.toString()}`)
-
       // Sử dụng AMM Config mặc định nếu không cung cấp
       const ammConfig = ammConfigAddress || this.defaultAmmConfig
 
       // Lấy tất cả pool từ chương trình
       const allPools = await this.program.account.poolState.all()
-      console.log(`Đang tìm kiếm trong ${allPools.length} pools...`)
 
       // Lọc các pool khớp với cả token và AMM Config
-      const matchingPools = allPools.filter((pool: any) => {
+      const matchingPools = allPools.filter(pool => {
         const poolToken0 = pool.account.token0Mint.toString()
         const poolToken1 = pool.account.token1Mint.toString()
         const poolConfig = pool.account.ammConfig.toString()
@@ -67,13 +88,11 @@ export class PoolFinder {
       })
 
       if (matchingPools.length === 0) {
-        console.log('Không tìm thấy pool cho cặp token này')
         return null
       }
 
       // Lấy pool đầu tiên tìm thấy
       const pool = matchingPools[0]
-      console.log(`Đã tìm thấy pool: ${pool.publicKey.toString()}`)
 
       // Lấy thông tin token balance nếu có thể
       let token0Balance: number | undefined
@@ -84,8 +103,8 @@ export class PoolFinder {
           pool.account.token0Vault
         )
         token0Balance = token0VaultInfo.value.uiAmount || 0
-      } catch (err) {
-        console.log(`Không thể lấy thông tin Token 0 vault`)
+      } catch (_err) {
+        // Không thể lấy thông tin Token 0 vault
       }
 
       try {
@@ -94,7 +113,7 @@ export class PoolFinder {
         )
         token1Balance = token1VaultInfo.value.uiAmount || 0
       } catch {
-        //
+        // Không thể lấy thông tin Token 1 vault
       }
 
       return {
@@ -130,7 +149,7 @@ export class PoolFinder {
           )
           token0Balance = token0VaultInfo.value.uiAmount || 0
         } catch {
-          console.log(`Không thể lấy thông tin Token 0 vault`)
+          // Không thể lấy thông tin Token 0 vault
         }
 
         try {
@@ -138,8 +157,8 @@ export class PoolFinder {
             poolState.token1Vault
           )
           token1Balance = token1VaultInfo.value.uiAmount || 0
-        } catch (error) {
-          console.error(`Không thể lấy thông tin Token 1 vault`)
+        } catch (_error) {
+          // Không thể lấy thông tin Token 1 vault
         }
 
         return {
@@ -151,12 +170,11 @@ export class PoolFinder {
           token1Balance,
           poolState,
         }
-      } catch (error) {
-        console.error(`Không thể tìm thấy pool với địa chỉ ${poolAddress.toString()}: ${error}`)
+      } catch (_error) {
         return null
       }
-    } catch (error) {
-      console.error(`Lỗi khi tìm pool từ địa chỉ: ${error}`)
+    } catch (_error) {
+      console.error(`Lỗi khi tìm pool từ địa chỉ: ${_error}`)
       return null
     }
   }
@@ -166,15 +184,18 @@ export class PoolFinder {
    */
   async getAmmConfigInfo(ammConfigAddress: PublicKey): Promise<AmmConfigInfo | null> {
     try {
-      const ammConfig = await this.program.account.ammConfig.fetch(ammConfigAddress)
+      // Lấy dữ liệu AMM Config và cast sang đúng kiểu
+      const ammConfig = (await this.program.account.ammConfig.fetch(
+        ammConfigAddress
+      )) as unknown as AmmConfigData
 
+      // Chuyển đổi thành các kiểu dữ liệu phù hợp
       return {
-        tradeFeeRate: Number(ammConfig.tradeFeeRate),
-        protocolFeeRate: Number(ammConfig.protocolFeeRate),
-        fundFeeRate: Number(ammConfig.fundFeeRate),
+        tradeFeeRate: ammConfig.tradeFeeRate.toNumber(),
+        protocolFeeRate: ammConfig.protocolFeeRate.toNumber(),
+        fundFeeRate: ammConfig.fundFeeRate.toNumber(),
       }
-    } catch (error) {
-      console.error(`Lỗi khi lấy thông tin AMM Config: ${error}`)
+    } catch (_error) {
       return null
     }
   }
@@ -199,7 +220,14 @@ export class PoolFinder {
     }
 
     // Lấy phí giao dịch từ pool, mặc định 0.25% nếu không có
-    const tradeFeeRate = (pool.poolState?.ammConfig?.tradeFeeRate || 25) / 10000 // Chuyển từ bps sang tỷ lệ (0.25%)
+    // Xử lý an toàn cho ammConfig, tránh truy cập trực tiếp vào thuộc tính của PublicKey
+    let tradeFeeRate = 25 / 10000 // Mặc định 0.25%
+    if (pool.poolState && typeof pool.poolState === 'object' && 'ammConfig' in pool.poolState) {
+      const ammConfigData = pool.poolState.ammConfig as unknown as { tradeFeeRate?: number }
+      if (ammConfigData && typeof ammConfigData === 'object' && 'tradeFeeRate' in ammConfigData) {
+        tradeFeeRate = (ammConfigData.tradeFeeRate || 25) / 10000
+      }
+    }
 
     // Công thức tính toán dựa trên AMM x*y=k có tính phí giao dịch
     // Trong đó:

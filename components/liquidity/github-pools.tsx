@@ -14,7 +14,7 @@ import {
   Search,
   ArrowRightLeft,
 } from 'lucide-react'
-import { GithubPoolService } from '@/lib/service/githubPoolService'
+import { GithubPoolService, GithubPoolInfo, GithubTokenInfo } from '@/lib/service/githubPoolService'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
@@ -23,16 +23,19 @@ import { Input } from '@/components/ui/input'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
+// Sử dụng lại các interface từ githubPoolService để đảm bảo tính nhất quán
+type GithubPool = GithubPoolInfo
+
 interface GithubPoolsProps {
   itemsPerPage?: number
-  onSelectPool?: (pool: any) => void
+  onSelectPool?: (pool: GithubPool) => void
 }
 
 export function GithubPools({ itemsPerPage = 10, onSelectPool }: GithubPoolsProps) {
-  const [pools, setPools] = useState<any[]>([])
-  const [enrichedPools, setEnrichedPools] = useState<any[]>([]) // Thêm state cho pools đã được làm giàu thông tin
+  const [pools, setPools] = useState<GithubPool[]>([])
+  const [enrichedPools, setEnrichedPools] = useState<GithubPool[]>([])
   const [loading, setLoading] = useState(true)
-  const [enriching, setEnriching] = useState(false) // Thêm state để theo dõi quá trình làm giàu thông tin
+  const [enriching, setEnriching] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
@@ -55,11 +58,14 @@ export function GithubPools({ itemsPerPage = 10, onSelectPool }: GithubPoolsProp
         setEnriching(true)
         // Only enrich up to 15 pools to avoid overloading
         const enriched = await GithubPoolService.enrichPoolsTokenInfo(poolsData, 15)
-        setEnrichedPools(enriched)
+        // Filter out null values
+        const filteredEnriched = enriched.filter((pool): pool is GithubPool => pool !== null)
+        setEnrichedPools(filteredEnriched)
         setEnriching(false)
       }
-    } catch (error: any) {
-      toast.error(`Error fetching pool list: ${error.message}`)
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Error fetching pool list: ${errorMessage}`)
       setPools([]) // Set pools to empty array when there's an error
       setEnrichedPools([])
     } finally {
@@ -85,13 +91,13 @@ export function GithubPools({ itemsPerPage = 10, onSelectPool }: GithubPoolsProp
   const formatTime = (dateString: string) => {
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true, locale: vi })
-    } catch (error) {
+    } catch {
       return 'Unknown'
     }
   }
 
   // Hàm để lấy badge cho loại token
-  const getTokenBadge = (token: any) => {
+  const getTokenBadge = (token: GithubTokenInfo | undefined) => {
     if (!token) return null
 
     return (
@@ -122,12 +128,17 @@ export function GithubPools({ itemsPerPage = 10, onSelectPool }: GithubPoolsProp
   }
 
   // Hàm để xử lý khi chọn pool
-  const handleSelectPool = async (pool: any) => {
+  const handleSelectPool = async (pool: GithubPool | null) => {
+    if (!pool) return
+
     // Nếu pool chưa được làm giàu thông tin, thực hiện trước khi sử dụng
     let poolWithTokenInfo = pool
     if (!pool.token0?.icon || !pool.token1?.icon) {
       try {
-        poolWithTokenInfo = await GithubPoolService.enrichPoolTokenInfo(pool)
+        const enrichedPool = await GithubPoolService.enrichPoolTokenInfo(pool)
+        if (enrichedPool !== null) {
+          poolWithTokenInfo = enrichedPool
+        }
       } catch (error) {
         console.error('Lỗi khi làm giàu thông tin token:', error)
       }
@@ -145,8 +156,8 @@ export function GithubPools({ itemsPerPage = 10, onSelectPool }: GithubPoolsProp
   }
 
   // Tìm pool đã được làm giàu thông tin
-  const getEnrichedPool = (poolAddress: string) => {
-    return enrichedPools.find(p => p?.poolAddress === poolAddress)
+  const getEnrichedPool = (poolAddress: string): GithubPool | undefined => {
+    return enrichedPools.find(p => p.poolAddress === poolAddress)
   }
 
   // Lọc pools theo từ khóa tìm kiếm

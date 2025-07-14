@@ -27,8 +27,19 @@ interface SwapParams {
 // Định nghĩa kiểu dữ liệu cho pool info
 interface PoolInfo {
   poolAddress: PublicKey
-  poolState?: any
-  poolInfo?: any
+  poolState?: PoolState
+  poolInfo?: PoolState
+}
+
+// Interface cho PoolState từ program account
+interface PoolState {
+  token0Mint: PublicKey
+  token1Mint: PublicKey
+  token0Vault: PublicKey
+  token1Vault: PublicKey
+  ammConfig: PublicKey
+  lpMint: PublicKey
+  [key: string]: any // Cho phép các thuộc tính khác
 }
 
 export class SwapService {

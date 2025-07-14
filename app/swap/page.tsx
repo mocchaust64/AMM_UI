@@ -10,17 +10,31 @@ import { TokenInfoDisplay } from '@/components/TokenExtension/TokenInfoDisplay'
 import { useWalletTokens } from '@/hooks/useWalletTokens'
 import { GithubPoolService } from '@/lib/service/githubPoolService'
 
-// Định nghĩa kiểu dữ liệu cho pool
+// Sửa định nghĩa kiểu dữ liệu cho pool để phù hợp với GithubPoolInfo
 interface Pool {
-  poolAddress?: string
+  poolAddress: string
   token0?: {
-    mint: string
+    mint?: string
     symbol?: string
+    name?: string
+    decimals?: number
+    icon?: string
+    isToken2022?: boolean
+    hasTransferHook?: boolean
   }
   token1?: {
-    mint: string
+    mint?: string
     symbol?: string
+    name?: string
+    decimals?: number
+    icon?: string
+    isToken2022?: boolean
+    hasTransferHook?: boolean
   }
+  network?: string
+  githubUrl?: string
+  createdAt?: string
+  lastUpdated?: string
 }
 
 export default function SwapPage() {
