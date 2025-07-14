@@ -33,12 +33,12 @@ export function Sidebar() {
         <span className="font-bold text-xl">MoonDex</span>
       </div>
 
-      <div className="p-4">
-        <div className="relative">
+      {/* <div className="p-12"> */}
+      {/* <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search tokens, pools..." className="pl-10 bg-background/50" />
-        </div>
-      </div>
+        </div> */}
+      {/* </div> */}
 
       <nav className="space-y-1 px-2">
         {navigation.map(item => {
