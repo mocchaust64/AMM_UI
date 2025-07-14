@@ -65,9 +65,7 @@ export function VaultTable() {
           <TableRow key={vault.symbol}>
             <TableCell className="font-medium">
               <div className="flex items-center gap-2">
-                <Avatar className="h-6 w-6">
-                  <img src={`/placeholder.svg?height=24&width=24`} alt={vault.name} />
-                </Avatar>
+                <Avatar className="h-6 w-6"></Avatar>
                 <div>
                   <div className="font-medium">{vault.name}</div>
                   <div className="text-xs text-muted-foreground">{vault.price}</div>

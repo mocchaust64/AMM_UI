@@ -249,6 +249,33 @@ export function usePoolCreation() {
 
           throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`)
         }
+
+        // Transaction đã xác nhận thành công, upload pool lên GitHub
+        if (apiResponse.poolInfo) {
+          try {
+            // Cập nhật txid trong poolInfo
+            const poolInfoWithTxid = {
+              ...apiResponse.poolInfo,
+              txid, // Thêm transaction ID
+              status: 'active',
+            }
+
+            // Gọi API để upload lên GitHub
+            const uploadResponse = await fetch('/api/upload-pool-to-github', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(poolInfoWithTxid),
+            })
+
+            if (!uploadResponse.ok) {
+              console.error('Failed to upload pool to GitHub:', await uploadResponse.json())
+            }
+          } catch (uploadError) {
+            console.error('Error uploading pool to GitHub:', uploadError)
+          }
+        }
       } catch (confirmError: any) {
         // Lấy thông tin chi tiết về transaction để debug
         try {

@@ -12,13 +12,8 @@ const REPO_NAME = process.env.GITHUB_REPO_NAME || 'repo-name'
 const BRANCH = process.env.GITHUB_BRANCH || 'main'
 const POOLS_DIRECTORY = process.env.GITHUB_POOLS_DIRECTORY || 'data/pools'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    console.log('Fetching pools from GitHub...')
-    console.log(
-      `Repository: ${REPO_OWNER}/${REPO_NAME}, Branch: ${BRANCH}, Directory: ${POOLS_DIRECTORY}`
-    )
-
     // Lấy danh sách file trong thư mục pools
     const { data: directoryContent } = await octokit.repos.getContent({
       owner: REPO_OWNER,
@@ -80,10 +75,11 @@ export async function GET(request: NextRequest) {
       pools,
       count: pools.length,
     })
-  } catch (error: any) {
-    console.error('Error fetching pools from GitHub:', error)
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: `Lỗi khi lấy danh sách pool từ GitHub: ${error.message}` },
+      {
+        error: `Lỗi khi lấy danh sách pool từ GitHub: ${error instanceof Error ? error.message : String(error)}`,
+      },
       { status: 500 }
     )
   }

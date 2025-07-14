@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         if ('sha' in fileData) {
           sha = fileData.sha
         }
-      } catch (error) {
+      } catch {
         // File không tồn tại, tiếp tục tạo mới
       }
 
@@ -69,17 +69,19 @@ export async function POST(request: NextRequest) {
         message: `Pool đã được lưu thành công lên GitHub tại: ${filePath}`,
         fileUrl: response.data.content?.html_url,
       })
-    } catch (error: any) {
-      console.error('GitHub API error:', error)
+    } catch (error: unknown) {
       return NextResponse.json(
-        { error: `Lỗi khi giao tiếp với GitHub API: ${error.message}` },
+        {
+          error: `Lỗi khi giao tiếp với GitHub API: ${error instanceof Error ? error.message : String(error)}`,
+        },
         { status: 500 }
       )
     }
-  } catch (error: any) {
-    console.error('Server error:', error)
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: `Đã xảy ra lỗi khi xử lý yêu cầu: ${error.message}` },
+      {
+        error: `Đã xảy ra lỗi khi xử lý yêu cầu: ${error instanceof Error ? error.message : String(error)}`,
+      },
       { status: 500 }
     )
   }

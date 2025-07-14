@@ -342,10 +342,10 @@ export async function POST(request: NextRequest) {
         txid: '', // Sẽ được cập nhật sau khi transaction được xác nhận
       }
 
-      // Upload thông tin pool lên GitHub (không chờ đợi kết quả để không làm chậm response)
-      uploadPoolToGithub(poolInfo)
-        .then(_result => {})
-        .catch(() => {})
+      // Không upload ngay mà sẽ để client gọi API upload sau khi xác nhận giao dịch thành công
+      // uploadPoolToGithub(poolInfo)
+      //   .then(_result => {})
+      //   .catch(() => {})
 
       // Trả về giao dịch đã ký một phần và thông tin pool
       return NextResponse.json({
@@ -356,6 +356,7 @@ export async function POST(request: NextRequest) {
         vault0: vault0.toString(),
         vault1: vault1.toString(),
         creatorLpTokenAddress: creatorLpTokenAddressPubkey.toString(),
+        poolInfo, // Thêm poolInfo để client có thể upload sau khi transaction thành công
       })
     } catch (txError: unknown) {
       return NextResponse.json(
