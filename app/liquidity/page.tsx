@@ -138,11 +138,10 @@ export default function LiquidityPage() {
           connection,
           {
             publicKey,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            signTransaction: async (tx: Transaction | VersionedTransaction) => tx as unknown as any,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            signAllTransactions: async (txs: (Transaction | VersionedTransaction)[]) =>
-              txs as unknown as any[],
+            signTransaction: async <T extends Transaction | VersionedTransaction>(tx: T) =>
+              tx as unknown as T,
+            signAllTransactions: async <T extends Transaction | VersionedTransaction>(txs: T[]) =>
+              txs as unknown as T[],
           },
           { commitment: 'confirmed' }
         )

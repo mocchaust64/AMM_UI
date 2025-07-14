@@ -7,12 +7,23 @@ import { getDetailTokenExtensions } from '@/lib/service/tokenService'
 import { Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+// Định nghĩa kiểu dữ liệu cho thông tin extension
+interface TokenExtensionDetails {
+  isToken2022?: boolean
+  extensions?: string[]
+  transferHook?: {
+    authority: string
+    programId: string
+  } | null
+  error?: string
+}
+
 interface TokenExtensionInfoProps {
   tokenMint: string | undefined
 }
 
 export function TokenExtensionInfo({ tokenMint }: TokenExtensionInfoProps) {
-  const [extensionInfo, setExtensionInfo] = useState<any>(null)
+  const [extensionInfo, setExtensionInfo] = useState<TokenExtensionDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -30,9 +41,9 @@ export function TokenExtensionInfo({ tokenMint }: TokenExtensionInfoProps) {
       try {
         const extensions = await getDetailTokenExtensions(tokenMint)
         setExtensionInfo(extensions)
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Lỗi khi lấy thông tin token extension:', err)
-        setError(err.message || 'Không thể lấy thông tin extension')
+        setError(err instanceof Error ? err.message : 'Không thể lấy thông tin extension')
       } finally {
         setLoading(false)
       }

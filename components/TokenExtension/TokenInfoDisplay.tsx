@@ -10,6 +10,17 @@ import { Badge } from '@/components/ui/badge'
 import { getDetailTokenExtensions } from '@/lib/service/tokenService'
 import { TokenExtensionDialog } from './TokenExtensionDialog'
 
+// Định nghĩa kiểu dữ liệu cho thông tin extension
+interface TokenExtensionDetails {
+  isToken2022?: boolean
+  extensions?: string[]
+  transferHook?: {
+    authority: string
+    programId: string
+  } | null
+  error?: string
+}
+
 interface TokenInfoDisplayProps {
   token?: TokenData | null
   title?: string
@@ -39,8 +50,8 @@ export function TokenIconDisplay({
   )
 }
 
-export function TokenInfoDisplay({ token, title }: TokenInfoDisplayProps) {
-  const [extensionInfo, setExtensionInfo] = useState<any>(null)
+export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
+  const [extensionInfo, setExtensionInfo] = useState<TokenExtensionDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -58,9 +69,9 @@ export function TokenInfoDisplay({ token, title }: TokenInfoDisplayProps) {
       try {
         const extensions = await getDetailTokenExtensions(token.mint)
         setExtensionInfo(extensions)
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching token extensions:', err)
-        setError(err.message || 'Could not fetch extension information')
+        setError(err instanceof Error ? err.message : 'Could not fetch extension information')
       } finally {
         setLoading(false)
       }

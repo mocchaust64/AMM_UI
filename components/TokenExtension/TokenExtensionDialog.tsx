@@ -23,10 +23,21 @@ interface TokenExtensionDialogProps {
   onClose: () => void
 }
 
+// Định nghĩa kiểu dữ liệu cho thông tin extension
+interface TokenExtensionInfo {
+  isToken2022?: boolean
+  extensions?: string[]
+  transferHook?: {
+    authority: string
+    programId: string
+  } | null
+  error?: string
+}
+
 const TRANSFER_HOOK_PROGRAM_ID = '12BZr6af3s7qf7GGmhBvMd46DWmVNhHfXmCwftfMk1mZ'
 
 export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionDialogProps) {
-  const [extensionInfo, setExtensionInfo] = useState<any>(null)
+  const [extensionInfo, setExtensionInfo] = useState<TokenExtensionInfo | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [whitelist, setWhitelist] = useState<string[]>([])
@@ -52,9 +63,9 @@ export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionD
         if (extensions?.transferHook?.programId === TRANSFER_HOOK_PROGRAM_ID) {
           fetchWhitelist(token.mint)
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching token extension info:', err)
-        setError(err.message || 'Could not fetch extension information')
+        setError(err instanceof Error ? err.message : 'Could not fetch extension information')
       } finally {
         setLoading(false)
       }
@@ -108,7 +119,7 @@ export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionD
           try {
             const address = new PublicKey(addressBytes)
             possibleAddresses.push(address.toString())
-          } catch (e) {
+          } catch {
             // Not a valid address, skip
           }
         }
@@ -117,9 +128,9 @@ export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionD
       }
 
       setWhitelist(possibleAddresses)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching whitelist:', err)
-      setWhitelistError(err.message || 'Could not fetch whitelist')
+      setWhitelistError(err instanceof Error ? err.message : 'Could not fetch whitelist')
       setWhitelist([])
     } finally {
       setLoadingWhitelist(false)

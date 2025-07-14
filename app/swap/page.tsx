@@ -10,6 +10,19 @@ import { TokenInfoDisplay } from '@/components/TokenExtension/TokenInfoDisplay'
 import { useWalletTokens } from '@/hooks/useWalletTokens'
 import { GithubPoolService } from '@/lib/service/githubPoolService'
 
+// Định nghĩa kiểu dữ liệu cho pool
+interface Pool {
+  poolAddress?: string
+  token0?: {
+    mint: string
+    symbol?: string
+  }
+  token1?: {
+    mint: string
+    symbol?: string
+  }
+}
+
 export default function SwapPage() {
   const { tokens } = useWalletTokens()
   const [fromToken, setFromToken] = useState<string>('')
@@ -17,7 +30,7 @@ export default function SwapPage() {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
 
   // State cho pool được chọn từ GitHub
-  const [selectedPool, setSelectedPool] = useState<any>(null)
+  const [selectedPool, setSelectedPool] = useState<Pool | null>(null)
   const [loadingDefaultPool, setLoadingDefaultPool] = useState<boolean>(true)
 
   // Lấy thời gian cập nhật token cuối cùng từ localStorage

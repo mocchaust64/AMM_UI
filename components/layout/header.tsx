@@ -14,7 +14,6 @@ import { useLanguage } from '@/lib/contexts/language-context'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import { toast } from 'sonner'
-import Image from 'next/image'
 
 export function Header() {
   const { theme, setTheme } = useTheme()
@@ -34,7 +33,7 @@ export function Header() {
   const handleConnectWallet = async () => {
     try {
       setVisible(true)
-    } catch (error) {
+    } catch {
       toast.error('Failed to open wallet selector')
     }
   }

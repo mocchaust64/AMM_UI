@@ -19,12 +19,28 @@ import { getDetailTokenExtensions } from '@/lib/service/tokenService'
 import { GithubPoolService } from '@/lib/service/githubPoolService'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
+import { TokenData } from '@/hooks/useWalletTokens'
+
+// Định nghĩa kiểu dữ liệu cho token trong context của component
+interface ExtendedTokenData extends TokenData {
+  hasTransferHook?: boolean
+}
+
+// Định nghĩa kiểu dữ liệu cho thông tin extension
+interface TokenExtensionDetails {
+  isToken2022?: boolean
+  extensions?: string[]
+  transferHook?: {
+    authority: string
+    programId: string
+  } | null
+  error?: string
+}
 
 export interface TokenSelectProps {
   value?: string
   onChange?: (value: string) => void
   excludeToken?: string
-  label?: string
   placeholder?: string
   disabled?: boolean
   includeSol?: boolean
@@ -34,14 +50,13 @@ export function TokenSelect({
   value,
   onChange,
   excludeToken,
-  label = 'Select a token',
   placeholder = 'Select token',
   disabled = false,
   includeSol = false,
 }: TokenSelectProps) {
   const { tokens, loading } = useWalletTokens({ includeSol })
   const [searchQuery, setSearchQuery] = useState('')
-  const [tokenExtensions, setTokenExtensions] = useState<Record<string, any>>({})
+  const [tokenExtensions, setTokenExtensions] = useState<Record<string, TokenExtensionDetails>>({})
 
   // Lấy thông tin extension cho token khi chọn
   useEffect(() => {
@@ -108,10 +123,10 @@ export function TokenSelect({
   }
 
   // Hiển thị badge dựa trên thông tin token extensions
-  const renderTokenExtensionsBadges = (token: any) => {
+  const renderTokenExtensionsBadges = (token: TokenData | ExtendedTokenData) => {
     if (!token || token.mint === 'SOL') return null
 
-    const extensionInfo = tokenExtensions[token.mint]
+    const extensionInfo = typeof token.mint === 'string' ? tokenExtensions[token.mint] : null
 
     return (
       <>
@@ -124,7 +139,7 @@ export function TokenSelect({
           </Badge>
         )}
 
-        {(extensionInfo?.transferHook || token.hasTransferHook) &&
+        {(extensionInfo?.transferHook || ('hasTransferHook' in token && token.hasTransferHook)) &&
           (extensionInfo?.isToken2022 || token.isToken2022) && (
             <Badge
               variant="outline"
@@ -237,11 +252,10 @@ export function PoolTokenSelect({
   value,
   onChange,
   excludeToken,
-  label = 'Select a token',
   placeholder = 'Select token',
   disabled = false,
 }: TokenSelectProps) {
-  const [tokens, setTokens] = useState<any[]>([])
+  const [tokens, setTokens] = useState<ExtendedTokenData[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -300,7 +314,7 @@ export function PoolTokenSelect({
   }
 
   // Hiển thị badge dựa trên thông tin token
-  const renderTokenExtensionsBadges = (token: any) => {
+  const renderTokenExtensionsBadges = (token: TokenData | ExtendedTokenData) => {
     if (!token || token.mint === 'SOL') return null
 
     return (
@@ -314,7 +328,7 @@ export function PoolTokenSelect({
           </Badge>
         )}
 
-        {token.isToken2022 && token.hasTransferHook && (
+        {token.isToken2022 && 'hasTransferHook' in token && token.hasTransferHook && (
           <Badge
             variant="outline"
             className="bg-amber-100/30 text-amber-600 border-amber-200 text-xs ml-1"
