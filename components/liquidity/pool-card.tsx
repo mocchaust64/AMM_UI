@@ -1,11 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { TrendingUp, ExternalLink, Share2, Info } from 'lucide-react'
+import { TrendingUp, Share2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import Link from 'next/link'
 import { useState } from 'react'
-import { TokenIconDisplay } from '@/components/TokenExtension/TokenInfoDisplay'
 import Image from 'next/image'
 import React from 'react'
 
@@ -36,11 +34,6 @@ export function PoolCard({ pool }: PoolCardProps) {
     navigator.clipboard.writeText(pool.poolAddress)
     setIsCopied(true)
     setTimeout(() => setIsCopied(false), 2000)
-  }
-
-  // Lấy URL của Solana Explorer cho pool
-  const getExplorerUrl = () => {
-    return `https://explorer.solana.com/address/${pool.poolAddress}?cluster=devnet`
   }
 
   return (

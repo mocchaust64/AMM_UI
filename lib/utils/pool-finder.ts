@@ -93,8 +93,8 @@ export class PoolFinder {
           pool.account.token1Vault
         )
         token1Balance = token1VaultInfo.value.uiAmount || 0
-      } catch (err) {
-        console.log(`Không thể lấy thông tin Token 1 vault`)
+      } catch {
+        //
       }
 
       return {
@@ -117,9 +117,6 @@ export class PoolFinder {
    */
   async findPoolByAddress(poolAddress: PublicKey): Promise<PoolInfo | null> {
     try {
-      console.log(`Tìm pool với địa chỉ ${poolAddress.toString()}`)
-
-      // Lấy thông tin pool từ địa chỉ
       try {
         const poolState = await this.program.account.poolState.fetch(poolAddress)
 
@@ -132,7 +129,7 @@ export class PoolFinder {
             poolState.token0Vault
           )
           token0Balance = token0VaultInfo.value.uiAmount || 0
-        } catch (err) {
+        } catch {
           console.log(`Không thể lấy thông tin Token 0 vault`)
         }
 
@@ -141,8 +138,8 @@ export class PoolFinder {
             poolState.token1Vault
           )
           token1Balance = token1VaultInfo.value.uiAmount || 0
-        } catch (err) {
-          console.log(`Không thể lấy thông tin Token 1 vault`)
+        } catch (error) {
+          console.error(`Không thể lấy thông tin Token 1 vault`)
         }
 
         return {

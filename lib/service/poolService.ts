@@ -39,11 +39,7 @@ export class PoolService {
    * @param ammConfigIndex Index của AMM config (mặc định là 0)
    * @returns Thông tin pool nếu tìm thấy, null nếu không tìm thấy
    */
-  async findPoolByTokenPair(
-    token0: PublicKey,
-    token1: PublicKey,
-    ammConfigIndex: number = 0
-  ): Promise<PoolInfo | null> {
+  async findPoolByTokenPair(token0: PublicKey, token1: PublicKey): Promise<PoolInfo | null> {
     try {
       // Tìm tất cả các pool có trong program
       const allPools = await this.program.account.poolState.all()

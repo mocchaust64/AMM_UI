@@ -42,10 +42,9 @@ export function SwapInterface({
   onFromTokenChange,
   onToTokenChange,
   initialPoolAddress,
-  loading = false,
 }: SwapInterfaceProps) {
   const { t } = useLanguage()
-  const { tokens, loading: tokensLoading, refreshTokens } = useWalletTokens()
+  const { tokens, loading, refreshTokens } = useWalletTokens()
 
   const wallet = useWallet()
   const { provider, program } = useAnchorProvider()
@@ -66,7 +65,6 @@ export function SwapInterface({
   const [searchingPool, setSearchingPool] = useState(false)
   const [currentPool, setCurrentPool] = useState<PoolInfo | null>(null)
   const [ammConfigInfo, setAmmConfigInfo] = useState<AmmConfigInfo | null>(null)
-  const [refreshingTokens, setRefreshingTokens] = useState(false)
 
   // State cho chức năng chọn pool từ GitHub
   const [githubPools, setGithubPools] = useState<any[]>([])
@@ -89,20 +87,6 @@ export function SwapInterface({
       onToTokenChange(toTokenMint)
     }
   }, [toTokenMint, onToTokenChange])
-
-  // Hàm refresh danh sách token
-  const handleRefreshTokens = async () => {
-    setRefreshingTokens(true)
-    try {
-      await refreshTokens()
-      toast.success('Đã cập nhật danh sách token!')
-    } catch (error) {
-      console.error('Error refreshing tokens:', error)
-      toast.error('Không thể cập nhật danh sách token.')
-    } finally {
-      setRefreshingTokens(false)
-    }
-  }
 
   // Tạo RPC connection
   const connection = new Connection(

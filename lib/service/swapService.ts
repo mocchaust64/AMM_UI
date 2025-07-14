@@ -84,14 +84,12 @@ export class SwapService {
   }
 
   async swap({
-    ammConfigIndex,
     inputToken,
     outputToken,
     inputTokenAccount,
     outputTokenAccount,
     amountIn,
     minimumAmountOut,
-    hookTokenMint,
     wallet,
     poolAddress,
   }: SwapParams) {
@@ -116,11 +114,7 @@ export class SwapService {
         }
       } else {
         // Tìm pool dựa vào token pair
-        const foundPool = await this.poolService.findPoolByTokenPair(
-          inputToken,
-          outputToken,
-          ammConfigIndex
-        )
+        const foundPool = await this.poolService.findPoolByTokenPair(inputToken, outputToken)
 
         if (!foundPool) {
           throw new Error('Không tìm thấy pool cho cặp token này')
@@ -166,13 +160,6 @@ export class SwapService {
       const inputTokenProgram = isInputToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
       const outputTokenProgram = isOutputToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
 
-      console.log(
-        `Input Token (${inputToken.toString().slice(0, 8)}...): isToken2022=${isInputToken2022}`
-      )
-      console.log(
-        `Output Token (${outputToken.toString().slice(0, 8)}...): isToken2022=${isOutputToken2022}`
-      )
-
       // 7. Kiểm tra transfer hook
       const inputTokenHasTransferHook = isInputToken2022 && (await this.hasTransferHook(inputToken))
       const outputTokenHasTransferHook =
@@ -197,8 +184,6 @@ export class SwapService {
           { pubkey: extraAccountMetaListPDA_input, isWritable: false, isSigner: false },
           { pubkey: whitelistPDA_input, isWritable: true, isSigner: false }
         )
-
-        console.log(`Input token có transfer hook, đã thêm các tài khoản cần thiết`)
       }
 
       if (outputTokenHasTransferHook) {
@@ -216,17 +201,10 @@ export class SwapService {
           { pubkey: extraAccountMetaListPDA_output, isWritable: false, isSigner: false },
           { pubkey: whitelistPDA_output, isWritable: true, isSigner: false }
         )
-
-        console.log(`Output token có transfer hook, đã thêm các tài khoản cần thiết`)
       }
 
       // Thêm wallet vào danh sách remainingAccounts - Quan trọng cho transfer hook
       remainingAccounts.push({ pubkey: wallet.publicKey, isWritable: false, isSigner: true })
-
-      console.log(
-        'Danh sách remainingAccounts:',
-        remainingAccounts.map(acc => acc.pubkey.toString().slice(0, 10) + '...')
-      )
 
       // 9. Create swap instruction
       const swapIx = await this.program.methods

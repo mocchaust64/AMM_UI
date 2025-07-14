@@ -35,7 +35,6 @@ function getServerKeypair(): Keypair {
     const secretKey = Uint8Array.from(JSON.parse(keypairData))
     return Keypair.fromSecretKey(secretKey)
   } catch (error) {
-    // Tạo keypair mới nếu không tìm thấy
     const keypair = Keypair.generate()
     fs.writeFileSync(SERVER_KEYPAIR_PATH, JSON.stringify(Array.from(keypair.secretKey)))
     return keypair

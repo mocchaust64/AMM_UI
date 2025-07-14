@@ -2,7 +2,7 @@
  * Service để làm việc với các pool được lưu trữ trên GitHub
  */
 import { TokenService, getDetailTokenExtensions } from './tokenService'
-import { Connection, PublicKey } from '@solana/web3.js'
+import { Connection } from '@solana/web3.js'
 
 export class GithubPoolService {
   /**
@@ -35,8 +35,6 @@ export class GithubPoolService {
 
       // Thử lại nếu còn số lần thử
       if (retryCount > 0) {
-        console.log(`Retrying... (${retryCount} attempts left)`)
-        // Đợi 1 giây trước khi thử lại
         await new Promise(resolve => setTimeout(resolve, 1000))
         return this.getAllPools(retryCount - 1)
       }
@@ -65,8 +63,6 @@ export class GithubPoolService {
 
       // Thử lại nếu còn số lần thử
       if (retryCount > 0) {
-        console.log(`Retrying... (${retryCount} attempts left)`)
-        // Đợi 1 giây trước khi thử lại
         await new Promise(resolve => setTimeout(resolve, 1000))
         return this.getPoolDetails(poolAddress, retryCount - 1)
       }
