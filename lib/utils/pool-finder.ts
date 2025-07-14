@@ -103,7 +103,8 @@ export class PoolFinder {
           pool.account.token0Vault
         )
         token0Balance = token0VaultInfo.value.uiAmount || 0
-      } catch {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_) {
         // Không thể lấy thông tin Token 0 vault
       }
 
@@ -157,7 +158,8 @@ export class PoolFinder {
             poolState.token1Vault
           )
           token1Balance = token1VaultInfo.value.uiAmount || 0
-        } catch {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (_) {
           // Không thể lấy thông tin Token 1 vault
         }
 
@@ -170,11 +172,13 @@ export class PoolFinder {
           token1Balance,
           poolState,
         }
-      } catch {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_) {
         return null
       }
-    } catch (error) {
-      console.error(`Lỗi khi tìm pool từ địa chỉ: ${error}`)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_) {
+      console.error(`Lỗi khi tìm pool từ địa chỉ: ${_}`)
       return null
     }
   }
@@ -195,7 +199,8 @@ export class PoolFinder {
         protocolFeeRate: ammConfig.protocolFeeRate.toNumber(),
         fundFeeRate: ammConfig.fundFeeRate.toNumber(),
       }
-    } catch {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_) {
       return null
     }
   }

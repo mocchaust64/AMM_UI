@@ -115,12 +115,14 @@ export class TokenService {
         try {
           await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
           isToken2022 = false
-        } catch {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (_) {
           try {
             await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
             isToken2022 = true
-          } catch (error) {
-            console.error('Error determining token type:', error)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch (_) {
+            console.error('Error determining token type:', _)
             // Không phải token hợp lệ, trả về thông tin mặc định
             return {
               name: 'Unknown Token',
@@ -182,8 +184,9 @@ export class TokenService {
             icon: metadataImage,
           }
         }
-      } catch (error) {
-        console.error('Error in getTokenIconAndName:', error)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_) {
+        console.error('Error in getTokenIconAndName:', _)
       }
     }
 
@@ -218,7 +221,8 @@ export async function getDetailTokenExtensions(mintAddress: string) {
         extensions: [],
         transferHook: null,
       }
-    } catch {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_) {
       // Nếu lỗi, có thể là token-2022 hoặc địa chỉ không hợp lệ
       // Tiếp tục thử với TOKEN_2022_PROGRAM_ID
     }
@@ -260,15 +264,16 @@ export async function getDetailTokenExtensions(mintAddress: string) {
       extensions: extensionTypes.map(type => ExtensionType[type]),
       transferHook: null,
     }
-  } catch (error) {
-    console.error('Error fetching token extensions:', error)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (_) {
+    console.error('Error fetching token extensions:', _)
 
     // Trả về không có extensions khi gặp lỗi
     return {
       isToken2022: false,
       extensions: [],
       transferHook: null,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: _ instanceof Error ? _.message : 'Unknown error',
     }
   }
 }
