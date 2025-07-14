@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Octokit } from '@octokit/rest'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Kiểm tra xem token đã được cấu hình chưa
     if (!process.env.GITHUB_TOKEN) {
@@ -31,12 +31,12 @@ export async function GET(request: NextRequest) {
         name: data.name,
       },
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Xử lý lỗi và trả về thông báo lỗi
     return NextResponse.json(
       {
         success: false,
-        message: `GitHub connection failed: ${error.message}`,
+        message: `GitHub connection failed: ${error instanceof Error ? error.message : String(error)}`,
       },
       { status: 500 }
     )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PoolCard } from '@/components/liquidity/pool-card'
@@ -19,6 +19,9 @@ import { PoolService } from '@/lib/service/poolService'
 import { Card } from '@/components/ui/card'
 import RAYDIUM_CP_SWAP_IDL from '@/idl/raydium_cp_swap.json'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Transaction, VersionedTransaction } from '@solana/web3.js'
+import { Idl } from '@coral-xyz/anchor'
+import { RaydiumCpSwap } from '@/idl/types/raydium_cp_swap'
 
 // Define data type for pool
 interface Pool {
@@ -103,81 +106,91 @@ export default function LiquidityPage() {
     setSearchTerm('')
   }, [activeTab])
 
-  // Load pools when component mounts
-  useEffect(() => {
-    loadUserPools()
-  }, [publicKey, connection])
-
   // Function to load pool data
-  const loadUserPools = async (forceRefresh = false) => {
-    if (!publicKey) {
-      setMyPools([])
-      setLoading(false)
-      return
-    }
-
-    if (forceRefresh) {
-      setRefreshing(true)
-    } else {
-      setLoading(true)
-    }
-
-    // Check cache if not force refreshing
-    if (!forceRefresh) {
-      const cachedData = getPoolsFromCache()
-      if (cachedData) {
-        setMyPools(cachedData.pools)
-        setLastUpdated(cachedData.lastUpdated)
+  const loadUserPools = useCallback(
+    async (forceRefresh = false) => {
+      if (!publicKey) {
+        setMyPools([])
         setLoading(false)
         return
       }
-    }
 
-    try {
-      // Connect to Raydium AMM Program
-      const provider = new AnchorProvider(
-        connection,
-        { publicKey, signTransaction: async (tx: any) => tx } as any,
-        { commitment: 'confirmed' }
-      )
+      if (forceRefresh) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
 
-      // Don't pass actual wallet object as we only need to read data
-      const program = new Program(RAYDIUM_CP_SWAP_IDL, provider)
+      // Check cache if not force refreshing
+      if (!forceRefresh) {
+        const cachedData = getPoolsFromCache()
+        if (cachedData) {
+          setMyPools(cachedData.pools)
+          setLastUpdated(cachedData.lastUpdated)
+          setLoading(false)
+          return
+        }
+      }
 
-      // Initialize PoolService
-      const poolService = new PoolService(program as any, connection)
+      try {
+        // Connect to Raydium AMM Program
+        const provider = new AnchorProvider(
+          connection,
+          {
+            publicKey,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            signTransaction: async (tx: Transaction | VersionedTransaction) => tx as unknown as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            signAllTransactions: async (txs: (Transaction | VersionedTransaction)[]) =>
+              txs as unknown as any[],
+          },
+          { commitment: 'confirmed' }
+        )
 
-      // Get list of pools user participates in
-      const userPoolsData = await poolService.listPoolsByOwner(publicKey)
+        // Don't pass actual wallet object as we only need to read data
+        const program = new Program<RaydiumCpSwap>(RAYDIUM_CP_SWAP_IDL as Idl, provider)
 
-      // Convert to Pool format for UI
-      const userPoolsForUI = userPoolsData.map(pool => ({
-        name: pool.name,
-        tokens: pool.tokens.map(token => ({
-          symbol: token.symbol,
-          icon: token.icon,
-        })),
-        tvl: pool.tvl,
-        apy: pool.apy || '0%',
-        volume24h: pool.volume24h || '$0',
-        fees24h: pool.fees24h || '$0',
-        type: pool.type,
-        isActive: pool.isActive,
-        poolAddress: pool.poolAddress,
-      }))
+        // Initialize PoolService
+        const poolService = new PoolService(program, connection)
 
-      setMyPools(userPoolsForUI)
-      setLastUpdated(Date.now())
+        // Get list of pools user participates in
+        const userPoolsData = await poolService.listPoolsByOwner(publicKey)
 
-      // Save to cache
-      savePoolsToCache(userPoolsForUI)
-    } catch (error) {
-      console.error('Failed to load pools:', error)
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }
+        // Convert to Pool format for UI
+        const userPoolsForUI = userPoolsData.map(pool => ({
+          name: pool.name,
+          tokens: pool.tokens.map(token => ({
+            symbol: token.symbol,
+            icon: token.icon,
+          })),
+          tvl: pool.tvl,
+          apy: pool.apy || '0%',
+          volume24h: pool.volume24h || '$0',
+          fees24h: pool.fees24h || '$0',
+          type: pool.type,
+          isActive: pool.isActive,
+          poolAddress: pool.poolAddress,
+        }))
+
+        setMyPools(userPoolsForUI)
+        setLastUpdated(Date.now())
+
+        // Save to cache
+        savePoolsToCache(userPoolsForUI)
+      } catch (error) {
+        console.error('Failed to load pools:', error)
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    },
+    [publicKey, connection, setMyPools, setLoading, setRefreshing, setLastUpdated]
+  )
+
+  // Load pools when component mounts
+  useEffect(() => {
+    loadUserPools()
+  }, [loadUserPools])
 
   const formatLastUpdated = () => {
     if (!lastUpdated) return ''

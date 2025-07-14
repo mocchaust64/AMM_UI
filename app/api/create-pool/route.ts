@@ -34,7 +34,7 @@ function getServerKeypair(): Keypair {
     const keypairData = fs.readFileSync(SERVER_KEYPAIR_PATH, 'utf-8')
     const secretKey = Uint8Array.from(JSON.parse(keypairData))
     return Keypair.fromSecretKey(secretKey)
-  } catch (error) {
+  } catch {
     const keypair = Keypair.generate()
     fs.writeFileSync(SERVER_KEYPAIR_PATH, JSON.stringify(Array.from(keypair.secretKey)))
     return keypair
@@ -42,12 +42,11 @@ function getServerKeypair(): Keypair {
 }
 
 // Hàm để upload thông tin pool lên GitHub
-async function uploadPoolToGithub(poolData: any) {
+async function uploadPoolToGithub(poolData: Record<string, unknown>) {
   try {
     // Xác định URL API endpoint
     // Khi chạy trong Next.js API route, chúng ta cần một URL tuyệt đối
     const apiUrl = 'http://localhost:3000/api/upload-pool-to-github'
-    console.log('Uploading pool to GitHub using URL:', apiUrl)
 
     // Gọi API upload-pool-to-github
     const response = await fetch(apiUrl, {
@@ -64,19 +63,19 @@ async function uploadPoolToGithub(poolData: any) {
       try {
         const errorData = await response.json()
         errorMessage = errorData.error || response.statusText
-      } catch (e) {
+      } catch {
         errorMessage = response.statusText
       }
-      console.error(`Failed to upload pool to GitHub: ${response.status} ${errorMessage}`)
       return { success: false, error: errorMessage }
     }
 
     const result = await response.json()
-    console.log('Pool uploaded to GitHub successfully:', result)
     return { success: true, data: result }
-  } catch (error: any) {
-    console.error('Error uploading pool to GitHub:', error)
-    return { success: false, error: error.message }
+  } catch (uploadError: unknown) {
+    return {
+      success: false,
+      error: uploadError instanceof Error ? uploadError.message : String(uploadError),
+    }
   }
 }
 
@@ -203,14 +202,6 @@ export async function POST(request: NextRequest) {
 
       const token0ProgramId = token0Info.isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
       const token1ProgramId = token1Info.isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
-
-      // Log thông tin token để debug
-      console.log(
-        `Token0 (${token0Mint}): isToken2022=${token0Info.isToken2022}, Program=${token0ProgramId.toString()}`
-      )
-      console.log(
-        `Token1 (${token1Mint}): isToken2022=${token1Info.isToken2022}, Program=${token1ProgramId.toString()}`
-      )
 
       // Chỉ thêm tài khoản transfer hook cho token0 nếu nó có transfer hook
       if (token0Info.isToken2022 && token0Info.transferHook) {
@@ -353,25 +344,8 @@ export async function POST(request: NextRequest) {
 
       // Upload thông tin pool lên GitHub (không chờ đợi kết quả để không làm chậm response)
       uploadPoolToGithub(poolInfo)
-        .then(result => {
-          if (result.success) {
-            console.log(
-              `Pool ${poolKeypair.publicKey.toString()} đã được lưu lên GitHub thành công:`,
-              result.data
-            )
-          } else {
-            console.error(
-              `Không thể lưu pool ${poolKeypair.publicKey.toString()} lên GitHub:`,
-              result.error
-            )
-          }
-        })
-        .catch(error => {
-          console.error(
-            `Lỗi không xác định khi lưu pool ${poolKeypair.publicKey.toString()} lên GitHub:`,
-            error
-          )
-        })
+        .then(_result => {})
+        .catch(() => {})
 
       // Trả về giao dịch đã ký một phần và thông tin pool
       return NextResponse.json({
@@ -383,20 +357,21 @@ export async function POST(request: NextRequest) {
         vault1: vault1.toString(),
         creatorLpTokenAddress: creatorLpTokenAddressPubkey.toString(),
       })
-    } catch (txError: any) {
+    } catch (txError: unknown) {
       return NextResponse.json(
         {
           error: 'Transaction creation failed',
-          message: txError.message || 'Unknown error in transaction creation',
+          message:
+            txError instanceof Error ? txError.message : 'Unknown error in transaction creation',
         },
         { status: 500 }
       )
     }
-  } catch (error: any) {
+  } catch (apiError: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to create pool',
-        message: error.message || 'Unknown error',
+        message: apiError instanceof Error ? apiError.message : 'Unknown error',
       },
       { status: 500 }
     )
