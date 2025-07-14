@@ -106,7 +106,7 @@ export default function LiquidityPage() {
   // Load pools when component mounts
   useEffect(() => {
     loadUserPools()
-  }, [publicKey])
+  }, [publicKey, connection])
 
   // Function to load pool data
   const loadUserPools = async (forceRefresh = false) => {

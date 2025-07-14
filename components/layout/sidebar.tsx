@@ -2,21 +2,13 @@
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  LayoutDashboard,
-  LifeBuoy,
-  Settings,
-  Wallet,
-  ArrowLeftRight,
-  Droplets,
-  Search,
-} from 'lucide-react'
+import { LifeBuoy, ArrowLeftRight, Droplets, Search } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useLanguage } from '@/lib/contexts/language-context'
 
 const navigation = [
-  { name: 'nav.dashboard', href: '/', icon: LayoutDashboard },
   { name: 'nav.swap', href: '/swap', icon: ArrowLeftRight },
   { name: 'nav.liquidity', href: '/liquidity', icon: Droplets },
 ]
@@ -28,7 +20,16 @@ export function Sidebar() {
   return (
     <aside className="w-64 border-r bg-background/50 backdrop-blur">
       <div className="flex h-16 items-center gap-2 border-b px-6">
-        <Wallet className="h-6 w-6 text-primary" />
+        <div className="relative h-8 w-8">
+          <Image
+            src="/logo.png"
+            alt="MoonDex Logo"
+            width={32}
+            height={32}
+            className="object-contain"
+            priority
+          />
+        </div>
         <span className="font-bold text-xl">MoonDex</span>
       </div>
 
@@ -62,12 +63,6 @@ export function Sidebar() {
             <Button variant="ghost" className="w-full justify-start gap-3">
               <LifeBuoy className="h-4 w-4" />
               {t('nav.support')}
-            </Button>
-          </Link>
-          <Link href="/settings">
-            <Button variant="ghost" className="w-full justify-start gap-3">
-              <Settings className="h-4 w-4" />
-              {t('nav.settings')}
             </Button>
           </Link>
         </div>

@@ -6,16 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import {
-  ArrowUpDown,
-  Settings,
-  Info,
-  Loader2,
-  AlertCircle,
-  CheckCircle,
-  RefreshCw,
-  Search,
-} from 'lucide-react'
+import { ArrowUpDown, Settings, Loader2, AlertCircle, CheckCircle, Search } from 'lucide-react'
 import { useLanguage } from '@/lib/contexts/language-context'
 import { toast } from 'sonner'
 import { PoolTokenSelect } from '@/components/TokenSelect/TokenSelect'
@@ -55,7 +46,7 @@ export function SwapInterface({
 }: SwapInterfaceProps) {
   const { t } = useLanguage()
   const { tokens, loading: tokensLoading, refreshTokens } = useWalletTokens()
-  const { tokens: nonSolTokens } = useWalletTokens({ includeSol: false })
+
   const wallet = useWallet()
   const { provider, program } = useAnchorProvider()
 
@@ -188,8 +179,6 @@ export function SwapInterface({
             // Cập nhật token mints từ pool
             setFromTokenMint(onChainPool.token0Mint.toString())
             setToTokenMint(onChainPool.token1Mint.toString())
-
-            toast.success('Đã tải thông tin pool từ blockchain!')
           }
         } catch (error) {
           console.error('Lỗi khi tải thông tin pool từ blockchain:', error)
@@ -229,7 +218,7 @@ export function SwapInterface({
             setAmmConfigInfo(configInfo)
           }
 
-          toast.success('Đã tìm thấy pool cho cặp token này!')
+          // toast.success('Đã tìm thấy pool cho cặp token này!')
         } else {
           toast.warning(
             'Không tìm thấy pool cho cặp token này. Vui lòng chọn pool từ GitHub hoặc nhập địa chỉ pool thủ công.'
@@ -403,12 +392,6 @@ export function SwapInterface({
     } finally {
       setSwapping(false)
     }
-  }
-
-  // Kiểm tra xem token đầu vào có phải là token0 trong pool không
-  const isToken0FromToken = () => {
-    if (!currentPool || !fromTokenMint) return false
-    return currentPool.token0Mint.toString() === fromTokenMint
   }
 
   // Hàm rút gọn địa chỉ để hiển thị

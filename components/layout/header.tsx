@@ -14,6 +14,7 @@ import { useLanguage } from '@/lib/contexts/language-context'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import { toast } from 'sonner'
+import Image from 'next/image'
 
 export function Header() {
   const { theme, setTheme } = useTheme()
@@ -46,9 +47,12 @@ export function Header() {
   return (
     <header className="flex h-16 items-center justify-between border-b px-6">
       <div className="flex items-center gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">DeFi Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Solana Network</p>
+        <div className="flex items-center gap-3">
+          <div className="relative h-10 w-10"></div>
+          <div>
+            <h1 className="text-xl font-semibold">MoonDex</h1>
+            <p className="text-sm text-muted-foreground">Solana Network</p>
+          </div>
         </div>
         <Badge variant="secondary" className="bg-green-500/10 text-green-500">
           <div className="h-2 w-2 rounded-full bg-green-500 mr-2" />

@@ -1,7 +1,6 @@
 import { Program } from '@coral-xyz/anchor'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { RaydiumCpSwap } from '../../idl/types/raydium_cp_swap'
-import { TokenInfo } from '@solana/spl-token-registry'
 import { TokenService } from './tokenService'
 
 interface PoolInfo {

@@ -6,7 +6,6 @@ import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Loader2, ArrowLeft, ExternalLink, Copy, RefreshCw } from 'lucide-react'
@@ -219,7 +218,7 @@ export default function PoolDetailPage() {
     }
 
     fetchPoolDetails()
-  }, [poolAddress, connection, program])
+  })
 
   return (
     <div className="min-h-screen bg-background">
