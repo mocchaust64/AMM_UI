@@ -1,8 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { LifeBuoy, ArrowLeftRight, Droplets, Search } from 'lucide-react'
+import { LifeBuoy, ArrowLeftRight, Droplets } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
