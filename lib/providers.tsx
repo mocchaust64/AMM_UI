@@ -23,12 +23,12 @@ export function SolanaProviders({ children }: { children: ReactNode }) {
 
   // Bạn cũng có thể sử dụng URL tùy chỉnh thay vì clusterApiUrl
   // const endpoint = "https://api.devnet.solana.com";
-  const endpoint = useMemo(() => clusterApiUrl(network), [])
+  const endpoint = useMemo(() => clusterApiUrl(network), [network])
 
   // Thiết lập các wallet adapters
   const wallets = useMemo(
     () => [new PhantomWalletAdapter(), new SolflareWalletAdapter(), new CoinbaseWalletAdapter()],
-    [network]
+    []
   )
 
   return (

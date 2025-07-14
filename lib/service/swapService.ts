@@ -39,7 +39,7 @@ interface PoolState {
   token1Vault: PublicKey
   ammConfig: PublicKey
   lpMint: PublicKey
-  [key: string]: any // Cho phép các thuộc tính khác
+  [key: string]: PublicKey | unknown // Thay thế any bằng kiểu cụ thể hơn
 }
 
 export class SwapService {

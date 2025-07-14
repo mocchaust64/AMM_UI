@@ -115,12 +115,12 @@ export class TokenService {
         try {
           await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
           isToken2022 = false
-        } catch (_error) {
+        } catch {
           try {
             await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
             isToken2022 = true
-          } catch (_error) {
-            console.error('Error determining token type:', _error)
+          } catch (error) {
+            console.error('Error determining token type:', error)
             // Không phải token hợp lệ, trả về thông tin mặc định
             return {
               name: 'Unknown Token',
@@ -182,8 +182,8 @@ export class TokenService {
             icon: metadataImage,
           }
         }
-      } catch (_error) {
-        console.error('Error in getTokenIconAndName:', _error)
+      } catch (error) {
+        console.error('Error in getTokenIconAndName:', error)
       }
     }
 
@@ -218,7 +218,7 @@ export async function getDetailTokenExtensions(mintAddress: string) {
         extensions: [],
         transferHook: null,
       }
-    } catch (_error) {
+    } catch {
       // Nếu lỗi, có thể là token-2022 hoặc địa chỉ không hợp lệ
       // Tiếp tục thử với TOKEN_2022_PROGRAM_ID
     }
@@ -260,15 +260,15 @@ export async function getDetailTokenExtensions(mintAddress: string) {
       extensions: extensionTypes.map(type => ExtensionType[type]),
       transferHook: null,
     }
-  } catch (_error) {
-    console.error('Error fetching token extensions:', _error)
+  } catch (error) {
+    console.error('Error fetching token extensions:', error)
 
     // Trả về không có extensions khi gặp lỗi
     return {
       isToken2022: false,
       extensions: [],
       transferHook: null,
-      error: _error instanceof Error ? _error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : 'Unknown error',
     }
   }
 }

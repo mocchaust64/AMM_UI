@@ -21,7 +21,7 @@ export interface PoolState {
   token1Vault: PublicKey
   ammConfig: PublicKey
   lpMint: PublicKey
-  [key: string]: any // Cho phép các thuộc tính khác
+  [key: string]: PublicKey | unknown // Thay thế any bằng kiểu cụ thể hơn
 }
 
 // Interface cho thông tin AMM Config
@@ -103,7 +103,7 @@ export class PoolFinder {
           pool.account.token0Vault
         )
         token0Balance = token0VaultInfo.value.uiAmount || 0
-      } catch (_err) {
+      } catch {
         // Không thể lấy thông tin Token 0 vault
       }
 
@@ -157,7 +157,7 @@ export class PoolFinder {
             poolState.token1Vault
           )
           token1Balance = token1VaultInfo.value.uiAmount || 0
-        } catch (_error) {
+        } catch {
           // Không thể lấy thông tin Token 1 vault
         }
 
@@ -170,11 +170,11 @@ export class PoolFinder {
           token1Balance,
           poolState,
         }
-      } catch (_error) {
+      } catch {
         return null
       }
-    } catch (_error) {
-      console.error(`Lỗi khi tìm pool từ địa chỉ: ${_error}`)
+    } catch (error) {
+      console.error(`Lỗi khi tìm pool từ địa chỉ: ${error}`)
       return null
     }
   }
@@ -195,7 +195,7 @@ export class PoolFinder {
         protocolFeeRate: ammConfig.protocolFeeRate.toNumber(),
         fundFeeRate: ammConfig.fundFeeRate.toNumber(),
       }
-    } catch (_error) {
+    } catch {
       return null
     }
   }
