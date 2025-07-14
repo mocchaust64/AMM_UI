@@ -22,6 +22,8 @@ import {
   createMint,
   getOrCreateAssociatedTokenAccount,
   createSyncNativeInstruction,
+  getMint,
+  getExtensionTypes,
 } from '@solana/spl-token'
 import * as anchor from '@coral-xyz/anchor'
 import { Program, BN } from '@coral-xyz/anchor'
@@ -438,7 +440,7 @@ async function logWhitelistAddresses(connection: Connection, mint: PublicKey) {
 
     // Thử tìm các địa chỉ 32-byte sau đoạn dữ liệu đầu tiên
     // Anchor thường có 8 byte discriminator đầu tiên
-    const possibleAddresses = []
+    const possibleAddresses: string[] = []
 
     // Bắt đầu từ byte thứ 16 (sau discriminator và counter)
     let offset = 16
@@ -474,6 +476,43 @@ async function logWhitelistAddresses(connection: Connection, mint: PublicKey) {
   } catch (error) {
     console.error('Lỗi khi đọc whitelist:', error)
     return []
+  }
+}
+
+// Hàm để kiểm tra xem token có phải là token-2022 hay không
+async function isToken2022(connection: Connection, mintAddress: PublicKey): Promise<boolean> {
+  try {
+    // Thử lấy thông tin từ SPL Token program
+    await getMint(connection, mintAddress, undefined, TOKEN_PROGRAM_ID)
+    return false // Nếu lấy được thông tin từ SPL Token program, đây là token thường
+  } catch (error) {
+    try {
+      // Thử lấy thông tin từ Token-2022 program
+      await getMint(connection, mintAddress, undefined, TOKEN_2022_PROGRAM_ID)
+      return true // Nếu lấy được thông tin từ Token-2022 program, đây là token-2022
+    } catch (error) {
+      console.error('Lỗi khi kiểm tra loại token:', error)
+      return false // Mặc định trả về false nếu không xác định được
+    }
+  }
+}
+
+// Hàm để kiểm tra xem token có transfer hook hay không
+async function hasTransferHook(connection: Connection, mintAddress: PublicKey): Promise<boolean> {
+  try {
+    // Thử lấy thông tin từ Token-2022 program
+    const mintInfo = await getMint(connection, mintAddress, undefined, TOKEN_2022_PROGRAM_ID)
+
+    // Nếu không có TLV data, không có extensions
+    if (!mintInfo.tlvData) {
+      return false
+    }
+
+    // Kiểm tra các extensions
+    const extensionTypes = getExtensionTypes(mintInfo.tlvData)
+    return extensionTypes.includes(ExtensionType.TransferHook)
+  } catch (error) {
+    return false // Không phải token-2022 hoặc không có transfer hook
   }
 }
 
@@ -513,37 +552,68 @@ async function initializePool(
     console.log('Pool address:', poolAddress.toString())
     console.log('Authority address:', auth.toString())
 
-    // Tính PDA cho whitelist
-    const [whitelistPDA_token0] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from('white_list'), token0.toBuffer()],
-      TRANSFER_HOOK_PROGRAM_ID
+    // 5. Xác định loại token và program ID tương ứng
+    const connection = program.provider.connection
+    const isToken0_2022 = await isToken2022(connection, token0)
+    const isToken1_2022 = await isToken2022(connection, token1)
+
+    const token0Program = isToken0_2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+    const token1Program = isToken1_2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+
+    console.log(
+      `Token0 (${token0.toString().slice(0, 8)}...): isToken2022=${isToken0_2022}, Program=${token0Program.toString().slice(0, 8)}...`
     )
-    const [extraAccountMetaListPDA_token0] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from('extra-account-metas'), token0.toBuffer()],
-      TRANSFER_HOOK_PROGRAM_ID
+    console.log(
+      `Token1 (${token1.toString().slice(0, 8)}...): isToken2022=${isToken1_2022}, Program=${token1Program.toString().slice(0, 8)}...`
     )
 
-    const [whitelistPDA_token1] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from('white_list'), token1.toBuffer()],
-      TRANSFER_HOOK_PROGRAM_ID
-    )
-    const [extraAccountMetaListPDA_token1] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from('extra-account-metas'), token1.toBuffer()],
-      TRANSFER_HOOK_PROGRAM_ID
-    )
+    // 6. Kiểm tra transfer hook
+    const token0HasTransferHook = isToken0_2022 && (await hasTransferHook(connection, token0))
+    const token1HasTransferHook = isToken1_2022 && (await hasTransferHook(connection, token1))
 
     // Tạo danh sách remainingAccounts với các tài khoản bổ sung cần thiết cho transfer hook
-    const remainingAccounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[] = [
-      // Token0 accounts - cần cho việc chuyển token0 vào vault
-      { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
-      { pubkey: extraAccountMetaListPDA_token0, isWritable: false, isSigner: false },
-      { pubkey: whitelistPDA_token0, isWritable: true, isSigner: false },
+    const remainingAccounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[] = []
 
-      // Token1 accounts - cần cho việc chuyển token1 vào vault
-      { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
-      { pubkey: extraAccountMetaListPDA_token1, isWritable: false, isSigner: false },
-      { pubkey: whitelistPDA_token1, isWritable: true, isSigner: false },
-    ]
+    // Chỉ thêm tài khoản transfer hook cho token có transfer hook
+    if (token0HasTransferHook) {
+      const [whitelistPDA_token0] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from('white_list'), token0.toBuffer()],
+        TRANSFER_HOOK_PROGRAM_ID
+      )
+      const [extraAccountMetaListPDA_token0] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from('extra-account-metas'), token0.toBuffer()],
+        TRANSFER_HOOK_PROGRAM_ID
+      )
+
+      // Thêm tài khoản cho token0
+      remainingAccounts.push(
+        { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
+        { pubkey: extraAccountMetaListPDA_token0, isWritable: false, isSigner: false },
+        { pubkey: whitelistPDA_token0, isWritable: true, isSigner: false }
+      )
+
+      console.log(`Token0 có transfer hook, đã thêm các tài khoản cần thiết`)
+    }
+
+    if (token1HasTransferHook) {
+      const [whitelistPDA_token1] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from('white_list'), token1.toBuffer()],
+        TRANSFER_HOOK_PROGRAM_ID
+      )
+      const [extraAccountMetaListPDA_token1] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from('extra-account-metas'), token1.toBuffer()],
+        TRANSFER_HOOK_PROGRAM_ID
+      )
+
+      // Thêm tài khoản cho token1
+      remainingAccounts.push(
+        { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
+        { pubkey: extraAccountMetaListPDA_token1, isWritable: false, isSigner: false },
+        { pubkey: whitelistPDA_token1, isWritable: true, isSigner: false }
+      )
+
+      console.log(`Token1 có transfer hook, đã thêm các tài khoản cần thiết`)
+    }
 
     // Thêm wallet vào danh sách remainingAccounts
     remainingAccounts.push({ pubkey: wallet.publicKey, isWritable: false, isSigner: true })
@@ -578,8 +648,8 @@ async function initializePool(
         token1Vault: vault1,
         observationState: observationAddress,
         tokenProgram: TOKEN_PROGRAM_ID,
-        token0Program: TOKEN_2022_PROGRAM_ID,
-        token1Program: TOKEN_2022_PROGRAM_ID,
+        token0Program: token0Program,
+        token1Program: token1Program,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -590,7 +660,7 @@ async function initializePool(
       .instruction()
 
     // Tạo transaction
-    const poolTx = new Transaction().add(initializeIx).add(modifyComputeUnit)
+    const poolTx = new Transaction().add(modifyComputeUnit).add(initializeIx)
 
     // Ký transaction
     poolTx.feePayer = wallet.publicKey
@@ -637,7 +707,7 @@ async function swapTokens(
   wallet: anchor.Wallet,
   connection: Connection,
   payer: Keypair,
-  hookTokenMint: PublicKey // Mint của token có Transfer Hook
+  hookTokenMint?: PublicKey // Đổi thành optional parameter
 ) {
   console.log('\n=== Thực hiện swap token ===')
 
@@ -662,34 +732,40 @@ async function swapTokens(
     const ammConfigAddress = poolState.ammConfig
     const observationAddress = poolState.observationKey
 
-    // Xác định token nào có transfer hook
-    const isInputTokenWithHook = inputToken.equals(hookTokenMint)
-    const isOutputTokenWithHook = outputToken.equals(hookTokenMint)
+    // Xác định loại token và program ID tương ứng
+    const isInputToken2022 = await isToken2022(connection, inputToken)
+    const isOutputToken2022 = await isToken2022(connection, outputToken)
+
+    const inputTokenProgram = isInputToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+    const outputTokenProgram = isOutputToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+
+    console.log(
+      `Input Token (${inputToken.toString().slice(0, 8)}...): isToken2022=${isInputToken2022}, Program=${inputTokenProgram.toString().slice(0, 8)}...`
+    )
+    console.log(
+      `Output Token (${outputToken.toString().slice(0, 8)}...): isToken2022=${isOutputToken2022}, Program=${outputTokenProgram.toString().slice(0, 8)}...`
+    )
+
+    // Kiểm tra transfer hook
+    const inputTokenHasTransferHook =
+      isInputToken2022 && (await hasTransferHook(connection, inputToken))
+    const outputTokenHasTransferHook =
+      isOutputToken2022 && (await hasTransferHook(connection, outputToken))
 
     // Tạo danh sách remainingAccounts với các tài khoản bổ sung cần thiết cho transfer hook
     const remainingAccounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[] = []
 
-    // Lấy thông tin về Transfer Hook program
-    const [extraAccountMetaListPDA_input] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from('extra-account-metas'), inputToken.toBuffer()],
-      TRANSFER_HOOK_PROGRAM_ID
-    )
-    const [whitelistPDA_input] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from('white_list'), inputToken.toBuffer()],
-      TRANSFER_HOOK_PROGRAM_ID
-    )
+    // Chỉ thêm tài khoản transfer hook cho token có transfer hook
+    if (inputTokenHasTransferHook) {
+      const [extraAccountMetaListPDA_input] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from('extra-account-metas'), inputToken.toBuffer()],
+        TRANSFER_HOOK_PROGRAM_ID
+      )
+      const [whitelistPDA_input] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from('white_list'), inputToken.toBuffer()],
+        TRANSFER_HOOK_PROGRAM_ID
+      )
 
-    const [extraAccountMetaListPDA_output] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from('extra-account-metas'), outputToken.toBuffer()],
-      TRANSFER_HOOK_PROGRAM_ID
-    )
-    const [whitelistPDA_output] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from('white_list'), outputToken.toBuffer()],
-      TRANSFER_HOOK_PROGRAM_ID
-    )
-
-    // Thêm các tài khoản cần thiết cho Transfer Hook, theo thứ tự giống như trong initializePool
-    if (isInputTokenWithHook) {
       // Thêm các tài khoản cho input token
       remainingAccounts.push({
         pubkey: TRANSFER_HOOK_PROGRAM_ID,
@@ -702,9 +778,20 @@ async function swapTokens(
         isSigner: false,
       })
       remainingAccounts.push({ pubkey: whitelistPDA_input, isWritable: true, isSigner: false })
+
+      console.log(`Input token có transfer hook, đã thêm các tài khoản cần thiết`)
     }
 
-    if (isOutputTokenWithHook) {
+    if (outputTokenHasTransferHook) {
+      const [extraAccountMetaListPDA_output] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from('extra-account-metas'), outputToken.toBuffer()],
+        TRANSFER_HOOK_PROGRAM_ID
+      )
+      const [whitelistPDA_output] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from('white_list'), outputToken.toBuffer()],
+        TRANSFER_HOOK_PROGRAM_ID
+      )
+
       // Thêm các tài khoản cho output token
       remainingAccounts.push({
         pubkey: TRANSFER_HOOK_PROGRAM_ID,
@@ -717,9 +804,11 @@ async function swapTokens(
         isSigner: false,
       })
       remainingAccounts.push({ pubkey: whitelistPDA_output, isWritable: true, isSigner: false })
+
+      console.log(`Output token có transfer hook, đã thêm các tài khoản cần thiết`)
     }
 
-    // Thêm wallet vào danh sách remainingAccounts nếu cần
+    // Thêm wallet vào danh sách remainingAccounts
     remainingAccounts.push({ pubkey: wallet.publicKey, isWritable: false, isSigner: true })
 
     // Thêm log để kiểm tra các tài khoản
@@ -745,8 +834,8 @@ async function swapTokens(
         outputTokenAccount: outputTokenAccount,
         inputVault: inputVault,
         outputVault: outputVault,
-        inputTokenProgram: TOKEN_2022_PROGRAM_ID,
-        outputTokenProgram: TOKEN_2022_PROGRAM_ID,
+        inputTokenProgram: inputTokenProgram,
+        outputTokenProgram: outputTokenProgram,
         inputTokenMint: inputToken,
         outputTokenMint: outputToken,
         observationState: observationAddress,
@@ -1127,7 +1216,7 @@ async function swapStandardTokens(
   }
 }
 
-// Cập nhật hàm main để thêm phần test với SOL và SPL token
+// Cập nhật hàm main để thêm các test case mới
 async function main() {
   try {
     // TEST 1: Tạo pool với token có transfer hook
@@ -1216,8 +1305,8 @@ async function main() {
         token1Mint,
         token0Account,
         token1Account,
-        new BN(10_000_000_000), // 10 token0 (với 9 decimal)
-        new BN(10_000_000_000), // 10 token1 (với 9 decimal)
+        new BN(5_000_000_000), // 5 token0 (với 9 decimal) thay vì 10
+        new BN(5_000_000_000), // 5 token1 (với 9 decimal) thay vì 10
         wallet
       )
 
@@ -1240,20 +1329,16 @@ async function main() {
         token1Mint,
         token0Account,
         token1Account,
-        new BN(1_000_000_000), // Swap 1 token0
-        new BN(900_000_000), // Minimum nhận lại 0.9 token1
+        new BN(500_000_000), // Swap 0.5 token0
+        new BN(450_000_000), // Minimum nhận lại 0.45 token1
         wallet,
         connection,
         payer,
         hookTokenMint // Mint của token có Transfer Hook
       )
 
-      // Đợi một chút trước khi thực hiện swap ngược lại
-      console.log('Đợi 5 giây trước khi thực hiện swap ngược lại...')
-      await delay(5000)
-
-      // Thực hiện swap từ token1 sang token0
-      console.log('\n=== BẮT ĐẦU TEST SWAP TOKEN1 -> TOKEN0 ===')
+      // Thực hiện swap ngược lại từ token1 sang token0
+      console.log('\n=== BẮT ĐẦU TEST REVERSE SWAP TOKEN1 -> TOKEN0 ===')
       await swapTokens(
         program,
         poolInfo.poolAddress,
@@ -1261,8 +1346,8 @@ async function main() {
         token0Mint,
         token1Account,
         token0Account,
-        new BN(1_000_000_000), // Swap 1 token1
-        new BN(900_000_000), // Minimum nhận lại 0.9 token0
+        new BN(450_000_000), // Swap 0.45 token1 (số lượng nhận được từ swap trước)
+        new BN(400_000_000), // Minimum nhận lại 0.4 token0
         wallet,
         connection,
         payer,
@@ -1282,8 +1367,8 @@ async function main() {
       // SOL (Wrapped SOL) sẽ được sử dụng làm token thứ hai
       const wrappedSolMint = new PublicKey('So11111111111111111111111111111111111111112')
 
-      // Tạo Wrapped SOL account với 10 SOL
-      const wrappedSolAccount = await createWrappedSolAccount(connection, payer, 1)
+      // Tạo Wrapped SOL account với 2 SOL thay vì 10 SOL
+      const wrappedSolAccount = await createWrappedSolAccount(connection, payer, 2)
       console.log('Wrapped SOL account:', wrappedSolAccount.toString())
 
       // Đợi để đảm bảo token balance đã được cập nhật
@@ -1309,7 +1394,7 @@ async function main() {
         console.log('Standard Token1 (SPL):', stdToken1Mint.toString())
       }
 
-      // Khởi tạo pool với token thông thường
+      // Khởi tạo pool với token thông thường - giảm số lượng token sử dụng
       const standardPoolInfo = await initializeStandardPool(
         program,
         ammConfigAddress,
@@ -1317,8 +1402,8 @@ async function main() {
         stdToken1Mint,
         stdToken0Account,
         stdToken1Account,
-        new BN(1_000_000_000), // Giảm xuống 1 token thay vì 5
-        new BN(1_000_000_000), // Giảm xuống 1 token thay vì 5
+        new BN(100_000_000), // Giảm xuống 0.1 token thay vì 0.5
+        new BN(100_000_000), // Giảm xuống 0.1 token thay vì 0.5
         wallet
       )
 
@@ -1339,14 +1424,209 @@ async function main() {
         stdToken1Mint,
         stdToken0Account,
         stdToken1Account,
-        new BN(1_000_000_000), // Swap 1 token0
-        new BN(400_000_000), // Chấp nhận nhận lại ít nhất 0.4 token1
+        new BN(50_000_000), // Swap 0.05 token0
+        new BN(20_000_000), // Chấp nhận nhận lại ít nhất 0.02 token1
+        wallet,
+        connection,
+        payer
+      )
+
+      // Thực hiện swap ngược lại từ token1 sang token0
+      console.log('\n=== BẮT ĐẦU TEST REVERSE SWAP TOKEN THÔNG THƯỜNG TOKEN1 -> TOKEN0 ===')
+      await swapStandardTokens(
+        program,
+        standardPoolInfo.poolAddress,
+        stdToken1Mint,
+        stdToken0Mint,
+        stdToken1Account,
+        stdToken0Account,
+        new BN(20_000_000), // Swap 0.02 token1 (giả định nhận được từ swap trước)
+        new BN(10_000_000), // Chấp nhận nhận lại ít nhất 0.01 token0
         wallet,
         connection,
         payer
       )
 
       console.log('\n=== HOÀN TẤT TEST SWAP VỚI TOKEN THÔNG THƯỜNG ===')
+
+      // TEST 3: Tạo pool với 2 token-2022 không có transfer hook
+      console.log('\n\n=== TEST 3: TẠO POOL VỚI 2 TOKEN-2022 KHÔNG CÓ TRANSFER HOOK ===')
+
+      // Tạo 2 token-2022 không có transfer hook
+      const regularToken2022A = await createRegularToken2022(connection, payer)
+      const regularToken2022B = await createRegularToken2022(connection, payer)
+
+      console.log('Token-2022 A (không có transfer hook):', regularToken2022A.mint.toString())
+      console.log('Token-2022 B (không có transfer hook):', regularToken2022B.mint.toString())
+
+      // Sắp xếp token để đảm bảo token0 < token1
+      let reg0Mint, reg1Mint, reg0Account, reg1Account
+
+      if (regularToken2022A.mint.toBuffer().compare(regularToken2022B.mint.toBuffer()) < 0) {
+        reg0Mint = regularToken2022A.mint
+        reg1Mint = regularToken2022B.mint
+        reg0Account = regularToken2022A.tokenAccount
+        reg1Account = regularToken2022B.tokenAccount
+      } else {
+        reg0Mint = regularToken2022B.mint
+        reg1Mint = regularToken2022A.mint
+        reg0Account = regularToken2022B.tokenAccount
+        reg1Account = regularToken2022A.tokenAccount
+      }
+
+      console.log('Token-2022 (0):', reg0Mint.toString())
+      console.log('Token-2022 (1):', reg1Mint.toString())
+
+      // Khởi tạo pool với 2 token-2022 không có transfer hook
+      try {
+        const regularToken2022PoolInfo = await initializePool(
+          program,
+          ammConfigAddress,
+          reg0Mint,
+          reg1Mint,
+          reg0Account,
+          reg1Account,
+          new BN(5_000_000_000), // 5 token0
+          new BN(5_000_000_000), // 5 token1
+          wallet
+        )
+
+        console.log('=== HOÀN TẤT TẠO POOL VỚI 2 TOKEN-2022 KHÔNG CÓ TRANSFER HOOK ===')
+        console.log('Pool Address:', regularToken2022PoolInfo.poolAddress.toString())
+        console.log('LP Mint Address:', regularToken2022PoolInfo.lpMintAddress.toString())
+
+        // Swap giữa 2 token-2022 không có transfer hook
+        await delay(5000)
+        console.log('\n=== BẮT ĐẦU TEST SWAP GIỮA 2 TOKEN-2022 KHÔNG CÓ TRANSFER HOOK ===')
+        await swapTokens(
+          program,
+          regularToken2022PoolInfo.poolAddress,
+          reg0Mint,
+          reg1Mint,
+          reg0Account,
+          reg1Account,
+          new BN(500_000_000), // Swap 0.5 token0
+          new BN(450_000_000), // Minimum nhận lại 0.45 token1
+          wallet,
+          connection,
+          payer
+        )
+
+        // Thực hiện swap ngược chiều
+        console.log('\n=== BẮT ĐẦU TEST REVERSE SWAP GIỮA 2 TOKEN-2022 KHÔNG CÓ TRANSFER HOOK ===')
+        await swapTokens(
+          program,
+          regularToken2022PoolInfo.poolAddress,
+          reg1Mint,
+          reg0Mint,
+          reg1Account,
+          reg0Account,
+          new BN(450_000_000), // Swap 0.45 token1 (nhận được từ swap trước)
+          new BN(400_000_000), // Minimum nhận lại 0.4 token0
+          wallet,
+          connection,
+          payer
+        )
+
+        console.log('\n=== HOÀN TẤT TEST SWAP GIỮA 2 TOKEN-2022 KHÔNG CÓ TRANSFER HOOK ===')
+      } catch (error) {
+        console.error('Lỗi khi tạo pool với 2 token-2022 không có transfer hook:', error)
+      }
+
+      // TEST 4: Tạo pool với 1 SPL token và 1 token-2022 có transfer hook
+      console.log('\n\n=== TEST 4: TẠO POOL VỚI 1 SPL TOKEN VÀ 1 TOKEN-2022 CÓ TRANSFER HOOK ===')
+
+      // Đã có sẵn splTokenResult từ TEST 2 và token1Result (có transfer hook) từ TEST 1
+
+      // Sắp xếp token để đảm bảo token0 < token1
+      let mixToken0Mint, mixToken1Mint, mixToken0Account, mixToken1Account
+      let mixHookTokenMint
+
+      if (splTokenResult.mint.toBuffer().compare(token1Result.mint.toBuffer()) < 0) {
+        mixToken0Mint = splTokenResult.mint
+        mixToken1Mint = token1Result.mint
+        mixToken0Account = splTokenResult.tokenAccount
+        mixToken1Account = token1Result.tokenAccount
+        mixHookTokenMint = token1Result.mint
+        console.log('Mixed Token0 (SPL):', mixToken0Mint.toString())
+        console.log('Mixed Token1 (có transfer hook):', mixToken1Mint.toString())
+      } else {
+        mixToken0Mint = token1Result.mint
+        mixToken1Mint = splTokenResult.mint
+        mixToken0Account = token1Result.tokenAccount
+        mixToken1Account = splTokenResult.tokenAccount
+        mixHookTokenMint = token1Result.mint
+        console.log('Mixed Token0 (có transfer hook):', mixToken0Mint.toString())
+        console.log('Mixed Token1 (SPL):', mixToken1Mint.toString())
+      }
+
+      try {
+        // Đảm bảo wallet đã được thêm vào whitelist của token có transfer hook
+        await initializeWhitelistAndAddAddress(
+          connection,
+          payer,
+          mixHookTokenMint,
+          wallet.publicKey
+        )
+
+        // Khởi tạo pool với 1 SPL token và 1 token-2022 có transfer hook
+        const mixedPoolInfo = await initializePool(
+          program,
+          ammConfigAddress,
+          mixToken0Mint,
+          mixToken1Mint,
+          mixToken0Account,
+          mixToken1Account,
+          new BN(5_000_000_000), // 5 token0
+          new BN(5_000_000_000), // 5 token1
+          wallet
+        )
+
+        console.log('=== HOÀN TẤT TẠO POOL VỚI 1 SPL TOKEN VÀ 1 TOKEN-2022 CÓ TRANSFER HOOK ===')
+        console.log('Pool Address:', mixedPoolInfo.poolAddress.toString())
+        console.log('LP Mint Address:', mixedPoolInfo.lpMintAddress.toString())
+
+        // Swap giữa SPL token và token-2022 có transfer hook
+        await delay(5000)
+        console.log('\n=== BẮT ĐẦU TEST SWAP GIỮA SPL TOKEN VÀ TOKEN-2022 CÓ TRANSFER HOOK ===')
+        await swapTokens(
+          program,
+          mixedPoolInfo.poolAddress,
+          mixToken0Mint,
+          mixToken1Mint,
+          mixToken0Account,
+          mixToken1Account,
+          new BN(500_000_000), // Swap 0.5 token0
+          new BN(450_000_000), // Minimum nhận lại 0.45 token1
+          wallet,
+          connection,
+          payer,
+          mixHookTokenMint
+        )
+
+        // Thực hiện swap ngược chiều
+        console.log(
+          '\n=== BẮT ĐẦU TEST REVERSE SWAP GIỮA TOKEN-2022 CÓ TRANSFER HOOK VÀ SPL TOKEN ==='
+        )
+        await swapTokens(
+          program,
+          mixedPoolInfo.poolAddress,
+          mixToken1Mint,
+          mixToken0Mint,
+          mixToken1Account,
+          mixToken0Account,
+          new BN(450_000_000), // Swap 0.45 token1 (nhận được từ swap trước)
+          new BN(400_000_000), // Minimum nhận lại 0.4 token0
+          wallet,
+          connection,
+          payer,
+          mixHookTokenMint
+        )
+
+        console.log('\n=== HOÀN TẤT TEST SWAP GIỮA SPL TOKEN VÀ TOKEN-2022 CÓ TRANSFER HOOK ===')
+      } catch (error) {
+        console.error('Lỗi khi tạo pool với SPL token và token-2022 có transfer hook:', error)
+      }
     } catch (error) {
       console.error('Lỗi khi thực hiện test:', error)
     }

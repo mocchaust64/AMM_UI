@@ -5,19 +5,22 @@ import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PoolCard } from '@/components/liquidity/pool-card'
 import { CreatePoolDialog } from '@/components/liquidity/create-pool-dialog'
+import { GithubPools } from '@/components/liquidity/github-pools'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Search, Plus, Loader2, RefreshCw } from 'lucide-react'
+import { Search, Plus, Loader2, RefreshCw, Info, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { Program, AnchorProvider } from '@coral-xyz/anchor'
 import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import { PoolService } from '@/lib/service/poolService'
 import { Card } from '@/components/ui/card'
 import RAYDIUM_CP_SWAP_IDL from '@/idl/raydium_cp_swap.json'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
-// Định nghĩa kiểu dữ liệu cho pool
+// Define data type for pool
 interface Pool {
   name: string
   tokens: { symbol: string; icon: string }[]
@@ -30,68 +33,82 @@ interface Pool {
   poolAddress: string
 }
 
-interface CachedPoolsData {
-  pools: Pool[]
-  lastUpdated: number
-}
-
-// Thời gian cache hết hạn (30 phút = 30 * 60 * 1000 ms)
-const CACHE_EXPIRATION = 30 * 60 * 1000
-const CACHE_KEY = 'user_liquidity_pools'
-
 export default function LiquidityPage() {
   const [createPoolOpen, setCreatePoolOpen] = useState(false)
   const [myPools, setMyPools] = useState<Pool[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
+  const [dismissAlert, setDismissAlert] = useState(false)
+  const [activeTab, setActiveTab] = useState('my-pools')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [searchTerm, setSearchTerm] = useState('')
 
-  const { publicKey, wallet } = useWallet()
+  const POOLS_PER_PAGE = 9
+
+  const { publicKey } = useWallet()
   const { connection } = useConnection()
 
-  // Hàm lưu dữ liệu vào cache
+  // Function to save pools to cache
   const savePoolsToCache = (pools: Pool[]) => {
-    if (!publicKey) return
-
     try {
-      const userKey = publicKey.toString()
-      const cacheData: CachedPoolsData = {
-        pools,
-        lastUpdated: Date.now(),
-      }
-
-      localStorage.setItem(`${CACHE_KEY}_${userKey}`, JSON.stringify(cacheData))
+      localStorage.setItem(
+        'my-pools-cache',
+        JSON.stringify({
+          pools,
+          lastUpdated: Date.now(),
+        })
+      )
     } catch (error) {
-      console.error('Error saving pools to cache:', error)
+      console.error('Failed to save pools to cache:', error)
     }
   }
 
-  // Hàm đọc dữ liệu từ cache
-  const getPoolsFromCache = (): CachedPoolsData | null => {
-    if (!publicKey) return null
-
+  // Function to get pools from cache
+  const getPoolsFromCache = () => {
     try {
-      const userKey = publicKey.toString()
-      const cachedData = localStorage.getItem(`${CACHE_KEY}_${userKey}`)
-
+      const cachedData = localStorage.getItem('my-pools-cache')
       if (!cachedData) return null
 
-      const parsedData = JSON.parse(cachedData) as CachedPoolsData
+      const { pools, lastUpdated } = JSON.parse(cachedData)
+      const cacheAge = Date.now() - lastUpdated
 
-      // Kiểm tra cache có hết hạn chưa
-      if (Date.now() - parsedData.lastUpdated > CACHE_EXPIRATION) {
-        return null
-      }
+      // Cache expires after 5 minutes
+      if (cacheAge > 5 * 60 * 1000) return null
 
-      return parsedData
+      return { pools, lastUpdated }
     } catch (error) {
-      console.error('Error reading pools from cache:', error)
+      console.error('Failed to get pools from cache:', error)
       return null
     }
   }
 
-  // Hàm load dữ liệu pools
+  // Check if alert has been dismissed before
+  useEffect(() => {
+    const dismissed = localStorage.getItem('dismissed-token-alert')
+    if (dismissed) {
+      setDismissAlert(true)
+    }
+  }, [])
+
+  // Save dismissed state when alert is closed
+  const handleDismissAlert = () => {
+    setDismissAlert(true)
+    localStorage.setItem('dismissed-token-alert', 'true')
+  }
+
+  // Reset page when changing tabs
+  useEffect(() => {
+    setCurrentPage(1)
+    setSearchTerm('')
+  }, [activeTab])
+
+  // Load pools when component mounts
+  useEffect(() => {
+    loadUserPools()
+  }, [publicKey])
+
+  // Function to load pool data
   const loadUserPools = async (forceRefresh = false) => {
     if (!publicKey) {
       setMyPools([])
@@ -105,7 +122,7 @@ export default function LiquidityPage() {
       setLoading(true)
     }
 
-    // Kiểm tra cache nếu không phải force refresh
+    // Check cache if not force refreshing
     if (!forceRefresh) {
       const cachedData = getPoolsFromCache()
       if (cachedData) {
@@ -117,23 +134,23 @@ export default function LiquidityPage() {
     }
 
     try {
-      // Kết nối với Raydium AMM Program
+      // Connect to Raydium AMM Program
       const provider = new AnchorProvider(
         connection,
         { publicKey, signTransaction: async (tx: any) => tx } as any,
         { commitment: 'confirmed' }
       )
 
-      // Không truyền đối tượng wallet thực tế vì chỉ cần đọc dữ liệu
+      // Don't pass actual wallet object as we only need to read data
       const program = new Program(RAYDIUM_CP_SWAP_IDL, provider)
 
-      // Khởi tạo PoolService
+      // Initialize PoolService
       const poolService = new PoolService(program as any, connection)
 
-      // Lấy danh sách pool mà người dùng tham gia
+      // Get list of pools user participates in
       const userPoolsData = await poolService.listPoolsByOwner(publicKey)
 
-      // Chuyển đổi sang định dạng Pool cho giao diện
+      // Convert to Pool format for UI
       const userPoolsForUI = userPoolsData.map(pool => ({
         name: pool.name,
         tokens: pool.tokens.map(token => ({
@@ -152,161 +169,241 @@ export default function LiquidityPage() {
       setMyPools(userPoolsForUI)
       setLastUpdated(Date.now())
 
-      // Lưu vào cache
+      // Save to cache
       savePoolsToCache(userPoolsForUI)
     } catch (error) {
-      console.error('Error loading user pools:', error)
-
-      // Trong trường hợp lỗi, sử dụng dữ liệu mẫu để kiểm tra giao diện
-      // Chỉ nên sử dụng trong môi trường phát triển
-      if (process.env.NODE_ENV === 'development') {
-        const mockPools = [
-          {
-            name: 'SOL/USDC',
-            tokens: [
-              { symbol: 'SOL', icon: '/placeholder.svg?height=32&width=32' },
-              { symbol: 'USDC', icon: '/placeholder.svg?height=32&width=32' },
-            ],
-            tvl: '$2.4M',
-            apy: '12.5%',
-            volume24h: '$450K',
-            fees24h: '$1.2K',
-            type: 'Standard' as const,
-            isActive: true,
-            poolAddress: 'Ew2coQtFDbLDgSagTbTrhHQwfKjNYDW2MJRt1QfvjkBR',
-          },
-          {
-            name: 'RAY/SOL',
-            tokens: [
-              { symbol: 'RAY', icon: '/placeholder.svg?height=32&width=32' },
-              { symbol: 'SOL', icon: '/placeholder.svg?height=32&width=32' },
-            ],
-            tvl: '$1.8M',
-            apy: '18.3%',
-            volume24h: '$320K',
-            fees24h: '$890',
-            type: 'Standard' as const,
-            isActive: true,
-            poolAddress: 'CwQ5z4jRS5KYQwFo4GpKJtBLsRWZpv9gDYpsgTPKN1Mm',
-          },
-        ]
-
-        setMyPools(mockPools)
-      } else {
-        setMyPools([])
-      }
+      console.error('Failed to load pools:', error)
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
   }
 
-  // Hàm refresh dữ liệu
-  const handleRefresh = () => {
-    loadUserPools(true)
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return ''
+
+    const now = Date.now()
+    const diffInSeconds = Math.floor((now - lastUpdated) / 1000)
+
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} seconds ago`
+    } else if (diffInSeconds < 3600) {
+      return `${Math.floor(diffInSeconds / 60)} minutes ago`
+    } else {
+      return `${Math.floor(diffInSeconds / 3600)} hours ago`
+    }
   }
 
-  useEffect(() => {
-    loadUserPools()
-  }, [publicKey, connection])
+  // Filter pools by search term
+  const filteredPools = myPools.filter(pool => {
+    if (!searchTerm) return true
 
-  // Lọc pool theo tìm kiếm
-  const filteredPools = myPools.filter(pool =>
-    pool.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const searchTermLower = searchTerm.toLowerCase()
+
+    // Search by name, pool address or token symbol
+    return (
+      (pool.name && pool.name.toLowerCase().includes(searchTermLower)) ||
+      pool.poolAddress.toLowerCase().includes(searchTermLower) ||
+      pool.tokens.some(
+        token => token.symbol && token.symbol.toLowerCase().includes(searchTermLower)
+      )
+    )
+  })
+
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredPools.length / POOLS_PER_PAGE)
+
+  // Get pools for current page
+  const paginatedPools = filteredPools.slice(
+    (currentPage - 1) * POOLS_PER_PAGE,
+    currentPage * POOLS_PER_PAGE
   )
 
+  // Function to change page
+  const goToPage = (page: number) => {
+    if (page < 1 || page > totalPages) return
+    setCurrentPage(page)
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex">
-        <Sidebar />
-        <div className="flex-1">
-          <Header />
-          <main className="p-6">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold mb-2">My Liquidity Pools</h1>
-                <p className="text-muted-foreground">
-                  {publicKey
-                    ? 'Manage your liquidity positions'
-                    : 'Connect your wallet to view your liquidity positions'}
-                </p>
-                {lastUpdated && (
-                  <Badge variant="outline" className="mt-1 text-xs">
-                    Cập nhật: {new Date(lastUpdated).toLocaleString()}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex gap-2">
-                {publicKey && !loading && (
-                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
-                    {refreshing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        Refreshing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-1" />
-                        Refresh
-                      </>
-                    )}
-                  </Button>
-                )}
+    <div className="flex h-screen">
+      <Sidebar />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header />
+
+        <main className="flex-1 overflow-auto p-6 bg-slate-50 dark:bg-slate-900/30">
+          {!dismissAlert && (
+            <Alert className="mb-6 bg-blue-900/10 text-blue-500 border-blue-800/20">
+              <Info className="h-5 w-5 text-blue-500" />
+              <AlertTitle className="text-base font-medium flex items-center justify-between">
+                New Update: Support for Diverse Token Types
                 <Button
-                  className="gap-2"
-                  onClick={() => setCreatePoolOpen(true)}
-                  disabled={!publicKey}
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleDismissAlert}
+                  className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
                 >
-                  <Plus className="h-4 w-4" />
-                  Create Pool
+                  Close
                 </Button>
-              </div>
-            </div>
+              </AlertTitle>
+              <AlertDescription className="text-sm">
+                AMM now supports all token combinations:
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Badge variant="outline" className="bg-slate-100/30">
+                    SPL Token + SPL Token
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-100/30">
+                    SPL Token + Token-2022
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-100/30">
+                    Token-2022 + Token-2022
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-100/30">
+                    SPL Token + Transfer Hook Token
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-100/30">
+                    Token-2022 + Transfer Hook Token
+                  </Badge>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
-            <div className="space-y-6">
-              <div className="flex items-center justify-end">
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search pools..."
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                  />
-                </div>
-              </div>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Liquidity Pools</h1>
+            <Button onClick={() => setCreatePoolOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Pool
+            </Button>
+          </div>
 
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
-                  <p>Loading your liquidity positions...</p>
-                </div>
-              ) : !publicKey ? (
-                <Card className="text-center py-12 bg-muted/40">
-                  <p className="text-muted-foreground">
-                    Connect your wallet to view your liquidity positions
-                  </p>
-                </Card>
-              ) : filteredPools.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">No liquidity positions found</p>
-                  <Button className="mt-4" onClick={() => setCreatePoolOpen(true)}>
-                    Add Liquidity
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredPools.map((pool, index) => (
-                    <PoolCard key={index} pool={pool} />
-                  ))}
-                </div>
-              )}
-            </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="my-pools">My Pools</TabsTrigger>
+              <TabsTrigger value="github-pools">GitHub Pools</TabsTrigger>
+            </TabsList>
 
-            <CreatePoolDialog _open={createPoolOpen} onOpenChange={setCreatePoolOpen} />
-          </main>
-        </div>
+            <TabsContent value="my-pools">
+              <Card className="overflow-hidden">
+                <div className="p-6">
+                  <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold mb-1">My Pools</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Manage your liquidity positions
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2 w-full lg:w-auto">
+                      <div className="relative flex-1 lg:w-80">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          className="pl-10"
+                          placeholder="Search pools by token name or address"
+                          value={searchTerm}
+                          onChange={e => {
+                            setSearchTerm(e.target.value)
+                            setCurrentPage(1) // Reset to page 1 when searching
+                          }}
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => loadUserPools(true)}
+                        disabled={refreshing}
+                      >
+                        {refreshing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-border">
+                  {loading ? (
+                    <div className="py-12 text-center">
+                      <Loader2 className="mx-auto h-6 w-6 animate-spin mb-2" />
+                      <p className="text-sm text-muted-foreground">Loading pools...</p>
+                    </div>
+                  ) : filteredPools.length === 0 ? (
+                    <div className="py-12 text-center">
+                      {searchTerm ? (
+                        <p className="text-sm text-muted-foreground mb-4">
+                          No pools found matching &quot;{searchTerm}&quot;
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-sm text-muted-foreground mb-4">No pools found</p>
+                          <Button
+                            variant="outline"
+                            className="mx-auto"
+                            onClick={() => setCreatePoolOpen(true)}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create your first pool
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                        {paginatedPools.map((pool, index) => (
+                          <PoolCard key={index} pool={pool} />
+                        ))}
+                      </div>
+
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center items-center gap-2 py-4 border-t border-border">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => goToPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+
+                          <div className="text-sm">
+                            Page {currentPage} of {totalPages}
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => goToPage(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+
+                      {lastUpdated && (
+                        <div className="text-xs text-muted-foreground text-center py-2 border-t border-border">
+                          Last updated {formatLastUpdated()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="github-pools">
+              <GithubPools itemsPerPage={9} />
+            </TabsContent>
+          </Tabs>
+        </main>
       </div>
+
+      <CreatePoolDialog _open={createPoolOpen} onOpenChange={setCreatePoolOpen} />
     </div>
   )
 }

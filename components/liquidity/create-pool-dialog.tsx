@@ -18,11 +18,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import { toast } from 'sonner'
-import { TokenSelect } from '@/components/TokenSelect'
+import { TokenSelect, TokenSelectProps } from '@/components/TokenSelect/TokenSelect'
 import { useWalletTokens } from '@/hooks/useWalletTokens'
 import { usePoolCreation } from '@/hooks/usePoolCreation'
-import { Check, ExternalLink } from 'lucide-react'
+import { Check, ExternalLink, Info } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { getDetailTokenExtensions } from '@/lib/service/tokenService'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface CreatePoolDialogProps {
   _open: boolean
@@ -281,6 +283,10 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
   const [amountB, setAmountB] = useState('')
   const [creatingPool, setCreatingPool] = useState(false)
 
+  // State để lưu thông tin chi tiết về token extensions
+  const [tokenAInfo, setTokenAInfo] = useState<any>(null)
+  const [tokenBInfo, setTokenBInfo] = useState<any>(null)
+
   // Thêm state cho dialog thành công
   const [successDialogOpen, setSuccessDialogOpen] = useState(false)
   const [createdPoolInfo, setCreatedPoolInfo] = useState<{
@@ -295,8 +301,77 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
     }
   }, [poolCreationError])
 
+  // Tự động lấy thông tin extensions khi chọn token
+  useEffect(() => {
+    async function fetchTokenAInfo() {
+      if (tokenAMint) {
+        const info = await getDetailTokenExtensions(tokenAMint)
+        setTokenAInfo(info)
+      } else {
+        setTokenAInfo(null)
+      }
+    }
+    fetchTokenAInfo()
+  }, [tokenAMint])
+
+  useEffect(() => {
+    async function fetchTokenBInfo() {
+      if (tokenBMint) {
+        const info = await getDetailTokenExtensions(tokenBMint)
+        setTokenBInfo(info)
+      } else {
+        setTokenBInfo(null)
+      }
+    }
+    fetchTokenBInfo()
+  }, [tokenBMint])
+
   const tokenA = tokens.find(token => token.mint === tokenAMint)
   const tokenB = tokens.find(token => token.mint === tokenBMint)
+
+  // Chuẩn bị props cho TokenSelect
+  const tokenASelectProps: TokenSelectProps = {
+    value: tokenAMint,
+    onChange: setTokenAMint,
+    excludeToken: tokenBMint,
+    disabled: creatingPool,
+    includeSol: false,
+    placeholder: 'Select token A',
+  }
+
+  const tokenBSelectProps: TokenSelectProps = {
+    value: tokenBMint,
+    onChange: setTokenBMint,
+    excludeToken: tokenAMint,
+    disabled: creatingPool,
+    includeSol: false,
+    placeholder: 'Select token B',
+  }
+
+  // Hiển thị badge dựa trên loại token
+  const renderTokenTypeBadge = (tokenInfo: any) => {
+    if (!tokenInfo) return null
+
+    return (
+      <div className="flex items-center gap-1 text-xs mt-1">
+        {tokenInfo.isToken2022 ? (
+          <Badge variant="outline" className="bg-purple-100/30 text-purple-600 border-purple-200">
+            Token-2022
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="bg-blue-100/30 text-blue-600 border-blue-200">
+            SPL Token
+          </Badge>
+        )}
+
+        {tokenInfo.isToken2022 && tokenInfo.transferHook && (
+          <Badge variant="outline" className="bg-amber-100/30 text-amber-600 border-amber-200">
+            Transfer Hook
+          </Badge>
+        )}
+      </div>
+    )
+  }
 
   const handleConnectWallet = async () => {
     try {
@@ -362,6 +437,27 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
     }
   }
 
+  // Chuẩn bị thông tin về token type cho hiển thị
+  const getTokenTypeSummary = () => {
+    if (!tokenAInfo || !tokenBInfo) return null
+
+    let typeDescription = ''
+    const hasAnyToken2022 = tokenAInfo.isToken2022 || tokenBInfo.isToken2022
+    const hasAnyTransferHook =
+      (tokenAInfo.isToken2022 && tokenAInfo.transferHook) ||
+      (tokenBInfo.isToken2022 && tokenBInfo.transferHook)
+
+    if (!hasAnyToken2022) {
+      typeDescription = 'Standard SPL Tokens'
+    } else if (hasAnyTransferHook) {
+      typeDescription = 'Transfer Hook Compatible'
+    } else if (hasAnyToken2022) {
+      typeDescription = 'Token-2022 Compatible'
+    }
+
+    return typeDescription
+  }
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -386,24 +482,14 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="tokenA">Token A</Label>
-                  <TokenSelect
-                    value={tokenAMint}
-                    onChange={value => setTokenAMint(value)}
-                    excludeToken={tokenBMint}
-                    placeholder="Select token A"
-                    includeSol={false}
-                  />
+                  <TokenSelect {...tokenASelectProps} />
+                  {renderTokenTypeBadge(tokenAInfo)}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="tokenB">Token B</Label>
-                  <TokenSelect
-                    value={tokenBMint}
-                    onChange={value => setTokenBMint(value)}
-                    excludeToken={tokenAMint}
-                    placeholder="Select token B"
-                    includeSol={false}
-                  />
+                  <TokenSelect {...tokenBSelectProps} />
+                  {renderTokenTypeBadge(tokenBInfo)}
                 </div>
               </div>
 
@@ -449,51 +535,55 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
             <TabsContent value="custom" className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="customTokenA">Custom Token A Address</Label>
-                  <Input
-                    id="customTokenA"
-                    placeholder="Enter token mint address"
-                    value={tokenAMint}
-                    onChange={e => setTokenAMint(e.target.value)}
-                    disabled={creatingPool}
-                  />
+                  <Label htmlFor="customTokenA">Custom Token A</Label>
+                  <TokenSelect {...tokenASelectProps} />
+                  {renderTokenTypeBadge(tokenAInfo)}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="customTokenB">Custom Token B Address</Label>
-                  <Input
-                    id="customTokenB"
-                    placeholder="Enter token mint address"
-                    value={tokenBMint}
-                    onChange={e => setTokenBMint(e.target.value)}
-                    disabled={creatingPool}
-                  />
+                  <Label htmlFor="customTokenB">Custom Token B</Label>
+                  <TokenSelect {...tokenBSelectProps} />
+                  {renderTokenTypeBadge(tokenBInfo)}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="customAmountA">Amount A</Label>
-                  <Input
-                    id="customAmountA"
-                    type="number"
-                    placeholder="0.0"
-                    value={amountA}
-                    onChange={e => setAmountA(e.target.value)}
-                    disabled={creatingPool}
-                  />
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id="customAmountA"
+                      type="number"
+                      placeholder="0.0"
+                      value={amountA}
+                      onChange={e => setAmountA(e.target.value)}
+                      disabled={creatingPool}
+                    />
+                    {tokenA && (
+                      <Badge variant="outline" className="whitespace-nowrap">
+                        Balance: {tokenA.balance.toLocaleString()}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="customAmountB">Amount B</Label>
-                  <Input
-                    id="customAmountB"
-                    type="number"
-                    placeholder="0.0"
-                    value={amountB}
-                    onChange={e => setAmountB(e.target.value)}
-                    disabled={creatingPool}
-                  />
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      id="customAmountB"
+                      type="number"
+                      placeholder="0.0"
+                      value={amountB}
+                      onChange={e => setAmountB(e.target.value)}
+                      disabled={creatingPool}
+                    />
+                    {tokenB && (
+                      <Badge variant="outline" className="whitespace-nowrap">
+                        Balance: {tokenB.balance.toLocaleString()}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -525,6 +615,31 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                       {tokenB?.symbol || tokenBMint.slice(0, 6)}
                     </span>
                   </div>
+                  {getTokenTypeSummary() && (
+                    <div className="flex justify-between">
+                      <span>Token Compatibility:</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge className="flex items-center gap-1 cursor-help">
+                              {getTokenTypeSummary()}
+                              <Info className="h-3 w-3" />
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p>This AMM now supports all token combinations:</p>
+                            <ul className="list-disc pl-4 mt-1 text-xs">
+                              <li>SPL Token + SPL Token</li>
+                              <li>SPL Token + Token-2022</li>
+                              <li>Token-2022 + Token-2022</li>
+                              <li>SPL Token + Token with Transfer Hook</li>
+                              <li>Token-2022 + Token with Transfer Hook</li>
+                            </ul>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Initial Liquidity:</span>
                     <span>

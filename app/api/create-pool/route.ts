@@ -7,23 +7,21 @@ import {
   SystemProgram,
   ComputeBudgetProgram,
   VersionedTransaction,
-  sendAndConfirmTransaction,
 } from '@solana/web3.js'
 import { Program, BN, AnchorProvider } from '@coral-xyz/anchor'
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddress,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddressSync,
 } from '@solana/spl-token'
 import * as anchor from '@coral-xyz/anchor'
 import * as fs from 'fs'
 import * as path from 'path'
 import { RaydiumCpSwap } from '../../../idl/types/raydium_cp_swap'
 import idl from '../../../idl/raydium_cp_swap.json'
+import { getDetailTokenExtensions } from '@/lib/service/tokenService'
 
-// Đường dẫn đến file keypair của server (cần được tạo trước)
 const SERVER_KEYPAIR_PATH =
   process.env.SERVER_KEYPAIR_PATH || path.join(process.cwd(), 'server-keypair.json')
 
@@ -41,6 +39,45 @@ function getServerKeypair(): Keypair {
     const keypair = Keypair.generate()
     fs.writeFileSync(SERVER_KEYPAIR_PATH, JSON.stringify(Array.from(keypair.secretKey)))
     return keypair
+  }
+}
+
+// Hàm để upload thông tin pool lên GitHub
+async function uploadPoolToGithub(poolData: any) {
+  try {
+    // Xác định URL API endpoint
+    // Khi chạy trong Next.js API route, chúng ta cần một URL tuyệt đối
+    const apiUrl = 'http://localhost:3000/api/upload-pool-to-github'
+    console.log('Uploading pool to GitHub using URL:', apiUrl)
+
+    // Gọi API upload-pool-to-github
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(poolData),
+    })
+
+    // Kiểm tra kết quả
+    if (!response.ok) {
+      let errorMessage
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.error || response.statusText
+      } catch (e) {
+        errorMessage = response.statusText
+      }
+      console.error(`Failed to upload pool to GitHub: ${response.status} ${errorMessage}`)
+      return { success: false, error: errorMessage }
+    }
+
+    const result = await response.json()
+    console.log('Pool uploaded to GitHub successfully:', result)
+    return { success: true, data: result }
+  } catch (error: any) {
+    console.error('Error uploading pool to GitHub:', error)
+    return { success: false, error: error.message }
   }
 }
 
@@ -158,53 +195,80 @@ export async function POST(request: NextRequest) {
     tx.add(modifyComputeUnitIx)
 
     try {
-      // Tính PDA cho whitelist và ExtraAccountMetaList cho cả token0 và token1
-      const [whitelistPDA_token0] = PublicKey.findProgramAddressSync(
-        [Buffer.from('white_list'), new PublicKey(token0Mint).toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
+      // Tạo mảng remainingAccounts
+      const remainingAccounts = []
+
+      // Xác định loại token (SPL Token hoặc Token-2022) bằng cách sử dụng getDetailTokenExtensions
+      const token0Info = await getDetailTokenExtensions(token0Mint)
+      const token1Info = await getDetailTokenExtensions(token1Mint)
+
+      const token0ProgramId = token0Info.isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+      const token1ProgramId = token1Info.isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+
+      // Log thông tin token để debug
+      console.log(
+        `Token0 (${token0Mint}): isToken2022=${token0Info.isToken2022}, Program=${token0ProgramId.toString()}`
       )
-      const [extraAccountMetaListPDA_token0] = PublicKey.findProgramAddressSync(
-        [Buffer.from('extra-account-metas'), new PublicKey(token0Mint).toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
+      console.log(
+        `Token1 (${token1Mint}): isToken2022=${token1Info.isToken2022}, Program=${token1ProgramId.toString()}`
       )
 
-      const [whitelistPDA_token1] = PublicKey.findProgramAddressSync(
-        [Buffer.from('white_list'), new PublicKey(token1Mint).toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
-      )
-      const [extraAccountMetaListPDA_token1] = PublicKey.findProgramAddressSync(
-        [Buffer.from('extra-account-metas'), new PublicKey(token1Mint).toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
-      )
+      // Chỉ thêm tài khoản transfer hook cho token0 nếu nó có transfer hook
+      if (token0Info.isToken2022 && token0Info.transferHook) {
+        // Tính PDA cho whitelist và ExtraAccountMetaList cho token0
+        const [whitelistPDA_token0] = PublicKey.findProgramAddressSync(
+          [Buffer.from('white_list'), new PublicKey(token0Mint).toBuffer()],
+          TRANSFER_HOOK_PROGRAM_ID
+        )
+        const [extraAccountMetaListPDA_token0] = PublicKey.findProgramAddressSync(
+          [Buffer.from('extra-account-metas'), new PublicKey(token0Mint).toBuffer()],
+          TRANSFER_HOOK_PROGRAM_ID
+        )
 
-      // Tạo LP token address
-      const creatorLpTokenAddressPubkey = PublicKey.findProgramAddressSync(
-        [
-          new PublicKey(creatorPublicKey).toBuffer(),
-          TOKEN_PROGRAM_ID.toBuffer(),
-          lpMintAddress.toBuffer(),
-        ],
+        // Thêm tài khoản cho token0
+        remainingAccounts.push(
+          { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
+          { pubkey: extraAccountMetaListPDA_token0, isWritable: false, isSigner: false },
+          { pubkey: whitelistPDA_token0, isWritable: true, isSigner: false }
+        )
+      }
+
+      // Chỉ thêm tài khoản transfer hook cho token1 nếu nó có transfer hook
+      if (token1Info.isToken2022 && token1Info.transferHook) {
+        // Tính PDA cho whitelist và ExtraAccountMetaList cho token1
+        const [whitelistPDA_token1] = PublicKey.findProgramAddressSync(
+          [Buffer.from('white_list'), new PublicKey(token1Mint).toBuffer()],
+          TRANSFER_HOOK_PROGRAM_ID
+        )
+        const [extraAccountMetaListPDA_token1] = PublicKey.findProgramAddressSync(
+          [Buffer.from('extra-account-metas'), new PublicKey(token1Mint).toBuffer()],
+          TRANSFER_HOOK_PROGRAM_ID
+        )
+
+        // Thêm tài khoản cho token1
+        remainingAccounts.push(
+          { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
+          { pubkey: extraAccountMetaListPDA_token1, isWritable: false, isSigner: false },
+          { pubkey: whitelistPDA_token1, isWritable: true, isSigner: false }
+        )
+      }
+
+      // Tạo LP token address - sửa cách tính để tương thích với cả Token-2022
+      const creatorLpTokenAddressPubkey = getAssociatedTokenAddressSync(
+        lpMintAddress,
+        new PublicKey(creatorPublicKey),
+        false,
+        TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
-      )[0]
+      )
 
-      // Luôn thêm tất cả các tài khoản cho cả hai token, dù có transfer hook hay không
-      const remainingAccounts = [
-        // Token0 accounts
-        { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
-        { pubkey: extraAccountMetaListPDA_token0, isWritable: false, isSigner: false },
-        { pubkey: whitelistPDA_token0, isWritable: true, isSigner: false },
-
-        // Token1 accounts
-        { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
-        { pubkey: extraAccountMetaListPDA_token1, isWritable: false, isSigner: false },
-        { pubkey: whitelistPDA_token1, isWritable: true, isSigner: false },
-
-        // Tài khoản LP token (tính theo cách mới)
+      // Thêm tài khoản LP token và wallet vào remainingAccounts
+      remainingAccounts.push(
+        // Tài khoản LP token
         { pubkey: creatorLpTokenAddressPubkey, isWritable: true, isSigner: false },
-
         // Wallet với quyền ký
-        { pubkey: new PublicKey(creatorPublicKey), isWritable: true, isSigner: true },
-      ]
+        { pubkey: new PublicKey(creatorPublicKey), isWritable: true, isSigner: true }
+      )
 
       // Tạo instruction để khởi tạo pool
       const initializeIx = await program.methods
@@ -228,8 +292,8 @@ export async function POST(request: NextRequest) {
           token1Vault: vault1,
           observationState: observationAddress,
           tokenProgram: TOKEN_PROGRAM_ID,
-          token0Program: TOKEN_2022_PROGRAM_ID,
-          token1Program: TOKEN_2022_PROGRAM_ID,
+          token0Program: token0ProgramId,
+          token1Program: token1ProgramId,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -253,6 +317,62 @@ export async function POST(request: NextRequest) {
 
       // Serialize giao dịch đã ký một phần để gửi về client
       const serializedTransaction = tx.serialize({ requireAllSignatures: false }).toString('base64')
+
+      // Chuẩn bị thông tin pool để lưu lên GitHub
+      const poolInfo = {
+        poolAddress: poolKeypair.publicKey.toString(),
+        lpMintAddress: lpMintAddress.toString(),
+        vault0: vault0.toString(),
+        vault1: vault1.toString(),
+        ammConfig: ammConfigAddress,
+        token0: {
+          mint: token0Mint,
+          vault: vault0.toString(),
+          isToken2022: token0Info.isToken2022,
+          hasTransferHook: token0Info.isToken2022 && token0Info.transferHook,
+          extensions: token0Info.extensions || [],
+          initialAmount: initAmount0,
+          // Không có thông tin về symbol và name trong API route
+          // Sẽ được cập nhật sau khi pool được tạo
+        },
+        token1: {
+          mint: token1Mint,
+          vault: vault1.toString(),
+          isToken2022: token1Info.isToken2022,
+          hasTransferHook: token1Info.isToken2022 && token1Info.transferHook,
+          extensions: token1Info.extensions || [],
+          initialAmount: initAmount1,
+          // Không có thông tin về symbol và name trong API route
+          // Sẽ được cập nhật sau khi pool được tạo
+        },
+        createdAt: new Date().toISOString(),
+        createdBy: creatorPublicKey,
+        network: process.env.SOLANA_NETWORK || 'devnet',
+        status: 'active',
+        txid: '', // Sẽ được cập nhật sau khi transaction được xác nhận
+      }
+
+      // Upload thông tin pool lên GitHub (không chờ đợi kết quả để không làm chậm response)
+      uploadPoolToGithub(poolInfo)
+        .then(result => {
+          if (result.success) {
+            console.log(
+              `Pool ${poolKeypair.publicKey.toString()} đã được lưu lên GitHub thành công:`,
+              result.data
+            )
+          } else {
+            console.error(
+              `Không thể lưu pool ${poolKeypair.publicKey.toString()} lên GitHub:`,
+              result.error
+            )
+          }
+        })
+        .catch(error => {
+          console.error(
+            `Lỗi không xác định khi lưu pool ${poolKeypair.publicKey.toString()} lên GitHub:`,
+            error
+          )
+        })
 
       // Trả về giao dịch đã ký một phần và thông tin pool
       return NextResponse.json({

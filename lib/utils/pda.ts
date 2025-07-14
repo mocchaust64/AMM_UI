@@ -17,7 +17,7 @@ export async function getAmmConfigAddress(
   )
 }
 
-// Hàm để lấy PDA cho Pool
+// Function to get PDA for Pool
 export async function getPoolAddress(
   ammConfigAddress: PublicKey,
   token0: PublicKey,
@@ -35,12 +35,12 @@ export async function getPoolAddress(
   )
 }
 
-// Hàm để lấy PDA cho Authority
+// Function to get PDA for Authority
 export async function getAuthAddress(programId: PublicKey): Promise<[PublicKey, number]> {
   return await PublicKey.findProgramAddress([Buffer.from('vault_and_lp_mint_auth_seed')], programId)
 }
 
-// Hàm để lấy PDA cho LP Mint
+// Function to get PDA for LP Mint
 export async function getPoolLpMintAddress(
   poolAddress: PublicKey,
   programId: PublicKey
@@ -51,7 +51,7 @@ export async function getPoolLpMintAddress(
   )
 }
 
-// Hàm để lấy PDA cho Pool Vault
+// Function to get PDA for Pool Vault
 export async function getPoolVaultAddress(
   poolAddress: PublicKey,
   mintAddress: PublicKey,
@@ -63,7 +63,7 @@ export async function getPoolVaultAddress(
   )
 }
 
-// Hàm để lấy PDA cho Oracle
+// Function to get PDA for Oracle
 export async function getOracleAddress(
   poolAddress: PublicKey,
   programId: PublicKey

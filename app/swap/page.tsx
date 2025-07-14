@@ -8,12 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TokenInfoDisplay } from '@/components/TokenExtension/TokenInfoDisplay'
 import { useWalletTokens } from '@/hooks/useWalletTokens'
+import { GithubPoolService } from '@/lib/service/githubPoolService'
 
 export default function SwapPage() {
   const { tokens } = useWalletTokens()
   const [fromToken, setFromToken] = useState<string>('')
   const [toToken, setToToken] = useState<string>('')
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
+
+  // State cho pool được chọn từ GitHub
+  const [selectedPool, setSelectedPool] = useState<any>(null)
+  const [loadingDefaultPool, setLoadingDefaultPool] = useState<boolean>(true)
 
   // Lấy thời gian cập nhật token cuối cùng từ localStorage
   useEffect(() => {
@@ -34,6 +39,34 @@ export default function SwapPage() {
       console.error('Error reading token cache timestamp:', error)
     }
   }, [tokens])
+
+  // Tải pool mặc định từ GitHub khi component được mount
+  useEffect(() => {
+    const loadDefaultPool = async () => {
+      setLoadingDefaultPool(true)
+      try {
+        const pools = await GithubPoolService.getAllPools()
+        if (pools && pools.length > 0) {
+          const firstPool = pools[0]
+          setSelectedPool(firstPool)
+
+          // Đặt token mints từ pool đầu tiên
+          if (firstPool.token0?.mint) {
+            setFromToken(firstPool.token0.mint)
+          }
+          if (firstPool.token1?.mint) {
+            setToToken(firstPool.token1.mint)
+          }
+        }
+      } catch (error) {
+        console.error('Lỗi khi tải pool mặc định:', error)
+      } finally {
+        setLoadingDefaultPool(false)
+      }
+    }
+
+    loadDefaultPool()
+  }, [])
 
   const recentSwaps = [
     {
@@ -78,21 +111,26 @@ export default function SwapPage() {
         <div className="flex-1">
           <Header />
           <main className="p-6">
-            <div className="mb-12 text-center">
+            <div className="mb-6 text-center">
               <h1 className="text-2xl font-bold mb-2 text-cen">Token Swap</h1>
               <p className="text-muted-foreground text-center">
                 Swap tokens instantly with the best rates across Solana DEXs
               </p>
               {lastUpdated && (
                 <Badge variant="outline" className="mt-2 text-xs">
-                  Danh sách token cập nhật: {new Date(lastUpdated).toLocaleString()}
+                  Token list updated: {new Date(lastUpdated).toLocaleString()}
                 </Badge>
               )}
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
               <div>
-                <SwapInterface onFromTokenChange={setFromToken} onToTokenChange={setToToken} />
+                <SwapInterface
+                  onFromTokenChange={setFromToken}
+                  onToTokenChange={setToToken}
+                  initialPoolAddress={selectedPool?.poolAddress}
+                  loading={loadingDefaultPool}
+                />
               </div>
 
               <div className="space-y-6">

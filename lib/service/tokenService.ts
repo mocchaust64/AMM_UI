@@ -105,11 +105,54 @@ export class TokenService {
       }
     }
 
-    // Nếu không tìm thấy và có connection, thử lấy metadata từ token-2022
+    // Nếu không tìm thấy và có connection, thử lấy metadata từ token
     if (connection) {
       try {
         const mintPublicKey = new PublicKey(mintAddress)
-        const tokenMetadata = await getTokenMetadata(connection, mintPublicKey)
+
+        // Xác định loại token (SPL Token hoặc Token-2022)
+        let isToken2022 = false
+        try {
+          await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
+          isToken2022 = false
+        } catch (error) {
+          try {
+            await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
+            isToken2022 = true
+          } catch (error) {
+            console.error('Error determining token type:', error)
+            // Không phải token hợp lệ, trả về thông tin mặc định
+            return {
+              name: 'Unknown Token',
+              symbol: mintAddress.slice(0, 4).toUpperCase(),
+              icon: '/placeholder-logo.svg',
+            }
+          }
+        }
+
+        // Thử lấy metadata dựa trên loại token
+        let tokenMetadata = null
+        try {
+          tokenMetadata = await getTokenMetadata(
+            connection,
+            mintPublicKey,
+            undefined,
+            isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+          )
+        } catch (error) {
+          console.error('Error fetching token metadata:', error)
+          // Nếu lỗi với program ID đã xác định, thử với program ID còn lại
+          try {
+            tokenMetadata = await getTokenMetadata(
+              connection,
+              mintPublicKey,
+              undefined,
+              isToken2022 ? TOKEN_PROGRAM_ID : TOKEN_2022_PROGRAM_ID
+            )
+          } catch (secondError) {
+            console.error('Error fetching token metadata with alternative program ID:', secondError)
+          }
+        }
 
         if (tokenMetadata) {
           let metadataName = tokenMetadata.name || 'Unknown Token'
@@ -140,7 +183,7 @@ export class TokenService {
           }
         }
       } catch (error) {
-        console.error('Error fetching token metadata:', error)
+        console.error('Error in getTokenIconAndName:', error)
       }
     }
 

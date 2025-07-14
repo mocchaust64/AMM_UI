@@ -113,6 +113,58 @@ export class PoolFinder {
   }
 
   /**
+   * Tìm pool từ địa chỉ
+   */
+  async findPoolByAddress(poolAddress: PublicKey): Promise<PoolInfo | null> {
+    try {
+      console.log(`Tìm pool với địa chỉ ${poolAddress.toString()}`)
+
+      // Lấy thông tin pool từ địa chỉ
+      try {
+        const poolState = await this.program.account.poolState.fetch(poolAddress)
+
+        // Lấy thông tin token balance nếu có thể
+        let token0Balance: number | undefined
+        let token1Balance: number | undefined
+
+        try {
+          const token0VaultInfo = await this.connection.getTokenAccountBalance(
+            poolState.token0Vault
+          )
+          token0Balance = token0VaultInfo.value.uiAmount || 0
+        } catch (err) {
+          console.log(`Không thể lấy thông tin Token 0 vault`)
+        }
+
+        try {
+          const token1VaultInfo = await this.connection.getTokenAccountBalance(
+            poolState.token1Vault
+          )
+          token1Balance = token1VaultInfo.value.uiAmount || 0
+        } catch (err) {
+          console.log(`Không thể lấy thông tin Token 1 vault`)
+        }
+
+        return {
+          poolAddress,
+          token0Mint: poolState.token0Mint,
+          token1Mint: poolState.token1Mint,
+          ammConfig: poolState.ammConfig,
+          token0Balance,
+          token1Balance,
+          poolState,
+        }
+      } catch (error) {
+        console.error(`Không thể tìm thấy pool với địa chỉ ${poolAddress.toString()}: ${error}`)
+        return null
+      }
+    } catch (error) {
+      console.error(`Lỗi khi tìm pool từ địa chỉ: ${error}`)
+      return null
+    }
+  }
+
+  /**
    * Lấy thông tin AMM Config
    */
   async getAmmConfigInfo(ammConfigAddress: PublicKey): Promise<AmmConfigInfo | null> {
@@ -149,17 +201,24 @@ export class PoolFinder {
       throw new Error('Pool không có đủ thanh khoản')
     }
 
-    // Công thức tính toán dựa trên AMM x*y=k
+    // Lấy phí giao dịch từ pool, mặc định 0.25% nếu không có
+    const tradeFeeRate = (pool.poolState?.ammConfig?.tradeFeeRate || 25) / 10000 // Chuyển từ bps sang tỷ lệ (0.25%)
+
+    // Công thức tính toán dựa trên AMM x*y=k có tính phí giao dịch
     // Trong đó:
     // - x là số lượng token đầu vào
     // - y là số lượng token đầu ra
     // - k là hằng số
+    // - fee là phí giao dịch
 
-    // Tính k
+    // Tính k - hằng số của pool
     const k = inBalance * outBalance
 
-    // Tính số lượng token đầu vào sau khi thêm amount
-    const inBalanceAfterSwap = inBalance + amount
+    // Số lượng token đầu vào thực tế sau khi trừ phí giao dịch
+    const amountWithFee = amount * (1 - tradeFeeRate)
+
+    // Tính số lượng token đầu vào sau khi thêm amount và trừ phí
+    const inBalanceAfterSwap = inBalance + amountWithFee
 
     // Tính số lượng token đầu ra sau khi swap
     const outBalanceAfterSwap = k / inBalanceAfterSwap

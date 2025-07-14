@@ -22,7 +22,7 @@ export function TokenIconDisplay({
 }) {
   return (
     <div className="flex items-center space-x-2">
-      <div className="h-8 w-8 rounded-full overflow-hidden bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-center">
+      <div className="h-full w-full overflow-hidden bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-center">
         {token.icon ? (
           <Image
             src={token.icon}
@@ -34,10 +34,6 @@ export function TokenIconDisplay({
         ) : (
           <div className="text-white font-semibold text-xs">{token.symbol.slice(0, 2)}</div>
         )}
-      </div>
-      <div>
-        <div className="font-medium">{token.symbol}</div>
-        {token.name && <div className="text-xs text-muted-foreground">{token.name}</div>}
       </div>
     </div>
   )

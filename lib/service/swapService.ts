@@ -1,4 +1,4 @@
-import { TOKEN_2022_PROGRAM_ID } from '@solana/spl-token'
+import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { PublicKey, Transaction, ComputeBudgetProgram, Connection } from '@solana/web3.js'
 import { Program, BN } from '@coral-xyz/anchor'
 import { RaydiumCpSwap } from '../../idl/types/raydium_cp_swap'
@@ -39,6 +39,48 @@ export class SwapService {
     private readonly connection: Connection
   ) {
     this.poolService = new PoolService(program, connection)
+  }
+
+  /**
+   * Kiểm tra xem token có phải là token-2022 hay không
+   * @param mintAddress Địa chỉ mint của token
+   */
+  private async isToken2022(mintAddress: PublicKey): Promise<boolean> {
+    try {
+      // Thử lấy thông tin từ SPL Token program
+      const accountInfo = await this.connection.getAccountInfo(mintAddress)
+
+      if (!accountInfo) {
+        throw new Error('Token mint không tồn tại')
+      }
+
+      // Kiểm tra programId của tài khoản
+      return accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)
+    } catch (error) {
+      console.error('Lỗi khi kiểm tra token type:', error)
+      return false // Mặc định là không phải Token-2022
+    }
+  }
+
+  /**
+   * Kiểm tra xem token có transfer hook hay không
+   * @param mintAddress Địa chỉ mint của token
+   */
+  private async hasTransferHook(mintAddress: PublicKey): Promise<boolean> {
+    try {
+      // Thử tìm xem có whitelist PDA cho token này không
+      const [whitelistPDA] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from('white_list'), mintAddress.toBuffer()],
+        TRANSFER_HOOK_PROGRAM_ID
+      )
+
+      // Kiểm tra xem tài khoản whitelist có tồn tại không
+      const whitelistAccount = await this.connection.getAccountInfo(whitelistPDA)
+      return whitelistAccount !== null
+    } catch (error) {
+      console.error('Lỗi khi kiểm tra transfer hook:', error)
+      return false // Mặc định là không có transfer hook
+    }
   }
 
   async swap({
@@ -117,47 +159,76 @@ export class SwapService {
       // 5. Get AMM config
       const ammConfigAddress = poolState.ammConfig
 
-      // 6. Setup remaining accounts for transfer hooks
+      // 6. Kiểm tra loại token và xác định program ID tương ứng
+      const isInputToken2022 = await this.isToken2022(inputToken)
+      const isOutputToken2022 = await this.isToken2022(outputToken)
+
+      const inputTokenProgram = isInputToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+      const outputTokenProgram = isOutputToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
+
+      console.log(
+        `Input Token (${inputToken.toString().slice(0, 8)}...): isToken2022=${isInputToken2022}`
+      )
+      console.log(
+        `Output Token (${outputToken.toString().slice(0, 8)}...): isToken2022=${isOutputToken2022}`
+      )
+
+      // 7. Kiểm tra transfer hook
+      const inputTokenHasTransferHook = isInputToken2022 && (await this.hasTransferHook(inputToken))
+      const outputTokenHasTransferHook =
+        isOutputToken2022 && (await this.hasTransferHook(outputToken))
+
+      // 8. Setup remaining accounts for transfer hooks
       const remainingAccounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[] = []
 
-      // Thêm tài khoản cho input token
-      const [whitelistPDA_input] = anchor.web3.PublicKey.findProgramAddressSync(
-        [Buffer.from('white_list'), inputToken.toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
-      )
-      const [extraAccountMetaListPDA_input] = anchor.web3.PublicKey.findProgramAddressSync(
-        [Buffer.from('extra-account-metas'), inputToken.toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
-      )
+      // Chỉ thêm tài khoản transfer hook cho token có transfer hook
+      if (inputTokenHasTransferHook) {
+        const [extraAccountMetaListPDA_input] = anchor.web3.PublicKey.findProgramAddressSync(
+          [Buffer.from('extra-account-metas'), inputToken.toBuffer()],
+          TRANSFER_HOOK_PROGRAM_ID
+        )
+        const [whitelistPDA_input] = anchor.web3.PublicKey.findProgramAddressSync(
+          [Buffer.from('white_list'), inputToken.toBuffer()],
+          TRANSFER_HOOK_PROGRAM_ID
+        )
 
-      // Luôn thêm tài khoản transfer hook cho input token
-      remainingAccounts.push(
-        { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
-        { pubkey: extraAccountMetaListPDA_input, isWritable: false, isSigner: false },
-        { pubkey: whitelistPDA_input, isWritable: true, isSigner: false }
-      )
+        remainingAccounts.push(
+          { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
+          { pubkey: extraAccountMetaListPDA_input, isWritable: false, isSigner: false },
+          { pubkey: whitelistPDA_input, isWritable: true, isSigner: false }
+        )
 
-      // Thêm tài khoản cho output token
-      const [whitelistPDA_output] = anchor.web3.PublicKey.findProgramAddressSync(
-        [Buffer.from('white_list'), outputToken.toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
-      )
-      const [extraAccountMetaListPDA_output] = anchor.web3.PublicKey.findProgramAddressSync(
-        [Buffer.from('extra-account-metas'), outputToken.toBuffer()],
-        TRANSFER_HOOK_PROGRAM_ID
-      )
+        console.log(`Input token có transfer hook, đã thêm các tài khoản cần thiết`)
+      }
 
-      // Luôn thêm tài khoản transfer hook cho output token
-      remainingAccounts.push(
-        { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
-        { pubkey: extraAccountMetaListPDA_output, isWritable: false, isSigner: false },
-        { pubkey: whitelistPDA_output, isWritable: true, isSigner: false }
-      )
+      if (outputTokenHasTransferHook) {
+        const [extraAccountMetaListPDA_output] = anchor.web3.PublicKey.findProgramAddressSync(
+          [Buffer.from('extra-account-metas'), outputToken.toBuffer()],
+          TRANSFER_HOOK_PROGRAM_ID
+        )
+        const [whitelistPDA_output] = anchor.web3.PublicKey.findProgramAddressSync(
+          [Buffer.from('white_list'), outputToken.toBuffer()],
+          TRANSFER_HOOK_PROGRAM_ID
+        )
+
+        remainingAccounts.push(
+          { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
+          { pubkey: extraAccountMetaListPDA_output, isWritable: false, isSigner: false },
+          { pubkey: whitelistPDA_output, isWritable: true, isSigner: false }
+        )
+
+        console.log(`Output token có transfer hook, đã thêm các tài khoản cần thiết`)
+      }
 
       // Thêm wallet vào danh sách remainingAccounts - Quan trọng cho transfer hook
       remainingAccounts.push({ pubkey: wallet.publicKey, isWritable: false, isSigner: true })
 
-      // 7. Create swap instruction
+      console.log(
+        'Danh sách remainingAccounts:',
+        remainingAccounts.map(acc => acc.pubkey.toString().slice(0, 10) + '...')
+      )
+
+      // 9. Create swap instruction
       const swapIx = await this.program.methods
         .swapBaseInput(amountIn, minimumAmountOut)
         .accountsPartial({
@@ -169,8 +240,8 @@ export class SwapService {
           outputTokenAccount,
           inputVault,
           outputVault,
-          inputTokenProgram: TOKEN_2022_PROGRAM_ID,
-          outputTokenProgram: TOKEN_2022_PROGRAM_ID,
+          inputTokenProgram,
+          outputTokenProgram,
           inputTokenMint: inputToken,
           outputTokenMint: outputToken,
           observationState: observationAddress,
@@ -178,7 +249,7 @@ export class SwapService {
         .remainingAccounts(remainingAccounts)
         .instruction()
 
-      // 8. Create and send transaction
+      // 10. Create and send transaction
       const modifyComputeUnit = ComputeBudgetProgram.setComputeUnitLimit({
         units: 800_000, // Tăng từ 400_000 lên 800_000
       })

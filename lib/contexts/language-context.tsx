@@ -101,10 +101,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>('en')
 
   useEffect(() => {
-    const stored = localStorage.getItem('language') as Language
-    if (stored && ['en', 'vi', 'zh'].includes(stored)) {
-      setLanguage(stored)
-    }
+    // Always set to English regardless of stored preference
+    localStorage.setItem('language', 'en')
   }, [])
 
   const handleSetLanguage = (lang: Language) => {

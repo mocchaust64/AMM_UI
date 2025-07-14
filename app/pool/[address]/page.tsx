@@ -108,7 +108,7 @@ export default function PoolDetailPage() {
   // Hàm fetch dữ liệu pool từ blockchain
   const fetchPoolFromChain = async (forceRefresh = false) => {
     if (!poolAddress) {
-      setError('Địa chỉ pool không hợp lệ')
+      setError('Invalid pool address')
       setLoading(false)
       return
     }
@@ -201,7 +201,7 @@ export default function PoolDetailPage() {
   useEffect(() => {
     async function fetchPoolDetails() {
       if (!poolAddress) {
-        setError('Địa chỉ pool không hợp lệ')
+        setError('Invalid pool address')
         setLoading(false)
         return
       }

@@ -6,6 +6,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import Link from 'next/link'
 import { useState } from 'react'
 import { TokenIconDisplay } from '@/components/TokenExtension/TokenInfoDisplay'
+import Image from 'next/image'
+import React from 'react'
 
 interface PoolCardProps {
   pool: {
@@ -42,101 +44,93 @@ export function PoolCard({ pool }: PoolCardProps) {
   }
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div className="flex items-center gap-2">
-          <div className="flex -space-x-2">
-            {pool.tokens.map((token, index) => (
-              <div
-                key={index}
-                className="h-8 w-8 border-2 border-background rounded-full overflow-hidden relative z-10"
-                style={{ zIndex: 10 - index }}
-              >
-                <TokenIconDisplay token={token} />
-              </div>
-            ))}
+    <Card className="hover:shadow-md transition-shadow overflow-hidden border border-slate-200 dark:border-slate-800">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 pt-3 px-4">
+        <div className="flex items-center gap-3">
+          <div className="relative flex items-center" style={{ width: '58px', height: '34px' }}>
+            {pool.tokens.map((token, index) => {
+              // Tính toán vị trí của mỗi token icon để không bị chồng lấp
+              const positionStyle = {
+                position: 'absolute',
+                zIndex: 10 - index,
+                left: index * 24 + 'px',
+              } as React.CSSProperties
+
+              return (
+                <div
+                  key={index}
+                  style={positionStyle}
+                  className="h-8 w-8 rounded-full overflow-hidden bg-white border-2 border-background shadow-sm"
+                >
+                  {token.icon ? (
+                    <Image
+                      src={token.icon}
+                      alt={token.symbol || 'Token'}
+                      width={32}
+                      height={32}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-center">
+                      <span className="text-white font-semibold text-xs">
+                        {token.symbol?.slice(0, 2) || '??'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
-          <CardTitle className="text-lg">{pool.name}</CardTitle>
+          <div>
+            <CardTitle className="text-base font-semibold">
+              {pool.tokens[0]?.symbol || 'Token'}/{pool.tokens[1]?.symbol || 'Token'}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {shortenAddress(pool.poolAddress)}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={copyToClipboard}
+                      className="inline-flex ml-1 hover:text-primary"
+                    >
+                      <Share2 className="h-3 w-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {isCopied ? 'Copied!' : 'Copy pool address'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </p>
+          </div>
         </div>
         <Badge variant={pool.type === 'Standard' ? 'default' : 'secondary'}>{pool.type}</Badge>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link
-                  href={getExplorerUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <span>{shortenAddress(pool.poolAddress)}</span>
-                  <ExternalLink className="h-3 w-3" />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="font-mono text-xs">{pool.poolAddress}</p>
-                <p className="text-xs text-muted-foreground">Xem trên Solana Explorer</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
 
-          <div className="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={copyToClipboard}
-                    className="p-1 rounded-full hover:bg-muted transition-colors"
-                  >
-                    <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  {isCopied ? 'Đã sao chép!' : 'Sao chép địa chỉ pool'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={`/pool/${pool.poolAddress}`}
-                    className="p-1 rounded-full hover:bg-muted transition-colors"
-                  >
-                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="top">Xem chi tiết pool</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+      <div className="bg-slate-50 dark:bg-slate-900/50 px-4 py-3 grid grid-cols-2 gap-x-8 gap-y-3 border-t border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <p className="text-xs text-muted-foreground mb-1">TVL</p>
+          <p className="font-semibold text-base">{pool.tvl}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted-foreground mb-1">APY</p>
+          <div className="flex items-center gap-1">
+            <p className="font-semibold text-base text-green-500">{pool.apy}</p>
+            {pool.apy !== 'N/A' && <TrendingUp className="h-3 w-3 text-green-500" />}
           </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-muted-foreground">TVL</p>
-            <p className="font-semibold">{pool.tvl}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">APY</p>
-            <div className="flex items-center gap-1">
-              <p className="font-semibold text-green-500">{pool.apy}</p>
-              <TrendingUp className="h-3 w-3 text-green-500" />
-            </div>
-          </div>
-          <div>
-            <p className="text-muted-foreground">24h Volume</p>
-            <p className="font-semibold">{pool.volume24h}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">24h Fees</p>
-            <p className="font-semibold">{pool.fees24h}</p>
-          </div>
+        <div>
+          <p className="text-xs text-muted-foreground mb-1">24h Volume</p>
+          <p className="font-semibold text-base">{pool.volume24h}</p>
         </div>
+        <div>
+          <p className="text-xs text-muted-foreground mb-1">24h Fees</p>
+          <p className="font-semibold text-base">{pool.fees24h}</p>
+        </div>
+      </div>
 
+      <CardContent className="px-4 py-3">
         <div className="flex gap-2">
           <Button className="flex-1">Add Liquidity</Button>
           <Button variant="outline" className="flex-1 bg-transparent">
