@@ -33,7 +33,7 @@ GITHUB_POOLS_DIRECTORY=data/pools
 3. Bạn có thể gọi API này bằng cách sử dụng webhook sau khi giao dịch tạo pool được xác nhận:
 
 ```
-GET /api/create-pool?signature={tx_signature}&poolAddress={pool_address}&poolData={encoded_pool_data}
+GET /api/create-pool?signature={tx_signature}&poolAddress={pool_address}&poolData={encoded_pool_data} 
 ```
 
 4. Hoặc gọi trực tiếp API để đẩy thông tin pool lên GitHub:
