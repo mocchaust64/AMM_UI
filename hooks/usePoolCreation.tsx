@@ -70,6 +70,14 @@ async function hasTransferHook(
   }
 }
 
+// Thêm thông báo thành công về việc tự động whitelist
+function displayTransferHookSuccess(token: string) {
+  toast({
+    title: 'Tự động whitelist thành công',
+    description: `Vault đã được tự động thêm vào whitelist của token ${token.slice(0, 8)}...`,
+  })
+}
+
 // Hàm so sánh hai PublicKey
 function comparePublicKeys(a: PublicKey, b: PublicKey): number {
   const aBuf = a.toBuffer()
@@ -81,6 +89,13 @@ function comparePublicKeys(a: PublicKey, b: PublicKey): number {
   }
 
   return 0
+}
+
+// Hàm để lấy link Solscan dựa trên network
+function getSolscanLink(txid: string): string {
+  // Mặc định sử dụng devnet
+  const network = 'devnet'
+  return `https://solscan.io/tx/${txid}?cluster=${network}`
 }
 
 export function usePoolCreation() {
@@ -111,6 +126,7 @@ export function usePoolCreation() {
 
     setLoading(true)
     setError(null)
+    let txid = '' // Khai báo txid ở ngoài try/catch để có thể truy cập từ catch block
 
     try {
       // Kiểm tra địa chỉ hợp lệ
@@ -153,6 +169,19 @@ export function usePoolCreation() {
         finalInitAmount1 = initAmount0
       }
 
+      // Check if tokens have transfer hook
+      const token0HasHook = await hasTransferHook(connection, finalToken0Mint)
+      const token1HasHook = await hasTransferHook(connection, finalToken1Mint)
+
+      // Hiển thị thông báo về việc phát hiện token với transfer hook
+      if (token0HasHook || token1HasHook) {
+        toast({
+          title: 'Phát hiện Token với Transfer Hook',
+          description:
+            'Smart contract sẽ tự động thêm vault vào whitelist trong quá trình tạo pool.',
+        })
+      }
+
       // Khởi tạo Anchor Wallet
       const wallet = {
         publicKey,
@@ -186,7 +215,7 @@ export function usePoolCreation() {
         ASSOCIATED_TOKEN_PROGRAM_ID
       )[0]
 
-      // Gọi API để tạo và ký transaction với pool keypair
+      // Gọi API để tạo và ký transaction với pool keypair - thêm thông tin về transfer hook
       const response = await fetch('/api/create-pool', {
         method: 'POST',
         headers: {
@@ -202,6 +231,9 @@ export function usePoolCreation() {
           creatorPublicKey: publicKey.toString(),
           ammConfigAddress: ammConfigAddress.toString(),
           creatorLpTokenAddress: creatorLpTokenAddress.toString(),
+          // Thêm thông tin về transfer hook
+          token0HasTransferHook: token0HasHook,
+          token1HasTransferHook: token1HasHook,
         }),
       })
 
@@ -223,10 +255,13 @@ export function usePoolCreation() {
       const signedTransaction = await signTransaction(transaction)
 
       // Gửi transaction đã ký đến Solana
-      const txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
+      txid = await connection.sendRawTransaction(signedTransaction.serialize(), {
         skipPreflight: true, // Sử dụng skipPreflight=true để có thể xem thêm chi tiết lỗi
         maxRetries: 3,
       })
+
+      console.log('🔄 Transaction đã được gửi:', txid)
+      console.log('🔍 Kiểm tra transaction tại:', getSolscanLink(txid))
 
       // Chờ xác nhận
       try {
@@ -241,13 +276,27 @@ export function usePoolCreation() {
 
           const logMessages = txInfo?.meta?.logMessages || []
 
+          console.error('❌ Transaction thất bại. Transaction hash:', txid)
+          console.error('🔍 Link Solscan:', getSolscanLink(txid))
+          console.error('📝 Log messages:', logMessages)
+
           // Phân tích lỗi cụ thể
           const missingAccountError = extractMissingAccountError(logMessages)
           if (missingAccountError) {
-            throw new Error(missingAccountError)
+            throw new Error(`${missingAccountError}. Xem chi tiết tại: ${getSolscanLink(txid)}`)
           }
 
-          throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`)
+          throw new Error(
+            `Transaction thất bại: ${JSON.stringify(confirmation.value.err)}. Vui lòng kiểm tra chi tiết tại: ${getSolscanLink(txid)}`
+          )
+        }
+
+        // Hiển thị thông báo riêng cho transfer hook nếu có
+        if (token0HasHook) {
+          displayTransferHookSuccess(finalToken0Mint.toString())
+        }
+        if (token1HasHook) {
+          displayTransferHookSuccess(finalToken1Mint.toString())
         }
 
         // Transaction đã xác nhận thành công, upload pool lên GitHub
@@ -286,10 +335,14 @@ export function usePoolCreation() {
 
           const logMessages = txInfo?.meta?.logMessages || []
 
+          console.error('❌ Lỗi xác nhận transaction. Transaction hash:', txid)
+          console.error('🔍 Link Solscan:', getSolscanLink(txid))
+          console.error('📝 Log messages:', logMessages)
+
           // Phân tích lỗi cụ thể
           const missingAccountError = extractMissingAccountError(logMessages)
           if (missingAccountError) {
-            throw new Error(missingAccountError)
+            throw new Error(`${missingAccountError}. Xem chi tiết tại: ${getSolscanLink(txid)}`)
           }
 
           // Kiểm tra cụ thể hơn về lỗi transfer hook
@@ -299,15 +352,18 @@ export function usePoolCreation() {
             )
 
             if (transferHookErrorLog) {
-              throw new Error(`Lỗi transfer hook: ${transferHookErrorLog}`)
+              throw new Error(
+                `Lỗi transfer hook: ${transferHookErrorLog}. Xem chi tiết tại: ${getSolscanLink(txid)}`
+              )
             }
           }
         } catch (txInfoError) {
           console.error('Error fetching transaction info:', txInfoError)
-          throw confirmError
         }
 
-        throw confirmError
+        throw new Error(
+          `Lỗi xác nhận transaction: ${confirmError.message}. Kiểm tra tại: ${getSolscanLink(txid)}`
+        )
       }
 
       // Tạo kết quả
@@ -328,14 +384,41 @@ export function usePoolCreation() {
       setLoading(false)
       return result
     } catch (err: any) {
-      // Hiển thị thông báo lỗi
-      toast({
-        variant: 'destructive',
-        title: 'Failed to create pool',
-        description: err.message || 'An unknown error occurred',
-      })
+      // Hiển thị thông báo lỗi với link Solscan nếu có txid
+      if (txid) {
+        const solscanLink = getSolscanLink(txid)
+        console.error('❌ Transaction thất bại:', err.message)
+        console.error('🔍 Link Solscan:', solscanLink)
 
-      setError(err.message || 'An unknown error occurred')
+        toast({
+          variant: 'destructive',
+          title: 'Tạo pool thất bại',
+          description: (
+            <div>
+              <p>{err.message}</p>
+              <p>
+                Transaction hash: {txid.slice(0, 8)}...{txid.slice(-8)}
+              </p>
+              <a
+                href={solscanLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline text-blue-500"
+              >
+                Xem chi tiết trên Solscan
+              </a>
+            </div>
+          ),
+        })
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Tạo pool thất bại',
+          description: err.message || 'Đã xảy ra lỗi không xác định',
+        })
+      }
+
+      setError(err.message || 'Đã xảy ra lỗi không xác định')
       setLoading(false)
       throw err
     }

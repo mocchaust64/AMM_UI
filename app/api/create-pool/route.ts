@@ -27,6 +27,7 @@ const SERVER_KEYPAIR_PATH =
 
 // Constants
 const TRANSFER_HOOK_PROGRAM_ID = new PublicKey('12BZr6af3s7qf7GGmhBvMd46DWmVNhHfXmCwftfMk1mZ')
+const WSOL_MINT = new PublicKey('So11111111111111111111111111111111111111112')
 
 // Hàm để lấy keypair của server
 function getServerKeypair(): Keypair {
@@ -41,44 +42,6 @@ function getServerKeypair(): Keypair {
   }
 }
 
-// Hàm để upload thông tin pool lên GitHub
-// async function uploadPoolToGithub(poolData: Record<string, unknown>) {
-//   try {
-//     // Xác định URL API endpoint
-//     // Khi chạy trong Next.js API route, chúng ta cần một URL tuyệt đối
-//     const apiUrl = 'http://localhost:3000/api/upload-pool-to-github'
-
-//     // Gọi API upload-pool-to-github
-//     const response = await fetch(apiUrl, {
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/json',
-//       },
-//       body: JSON.stringify(poolData),
-//     })
-
-//     // Kiểm tra kết quả
-//     if (!response.ok) {
-//       let errorMessage
-//       try {
-//         const errorData = await response.json()
-//         errorMessage = errorData.error || response.statusText
-//       } catch {
-//         errorMessage = response.statusText
-//       }
-//       return { success: false, error: errorMessage }
-//     }
-
-//     const result = await response.json()
-//     return { success: true, data: result }
-//   } catch (uploadError: unknown) {
-//     return {
-//       success: false,
-//       error: uploadError instanceof Error ? uploadError.message : String(uploadError),
-//     }
-//   }
-// }
-
 export async function POST(request: NextRequest) {
   try {
     // Parse request body
@@ -92,6 +55,8 @@ export async function POST(request: NextRequest) {
       initAmount1,
       creatorPublicKey,
       ammConfigAddress,
+      token0HasTransferHook, // Nhận thông tin từ client
+      token1HasTransferHook, // Nhận thông tin từ client
     } = body
 
     // Validate required fields
@@ -106,6 +71,14 @@ export async function POST(request: NextRequest) {
       !ammConfigAddress
     ) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Kiểm tra đặc biệt nếu có token là Wrapped SOL
+    const hasWrappedSol =
+      new PublicKey(token0Mint).equals(WSOL_MINT) || new PublicKey(token1Mint).equals(WSOL_MINT)
+
+    if (hasWrappedSol) {
+      console.log('Pool includes Wrapped SOL, optimizing transaction...')
     }
 
     // Kết nối đến Solana
@@ -200,11 +173,36 @@ export async function POST(request: NextRequest) {
       const token0Info = await getDetailTokenExtensions(token0Mint)
       const token1Info = await getDetailTokenExtensions(token1Mint)
 
+      // Sử dụng thông tin từ client nếu có, nếu không thì dùng kết quả từ API
+      const token0HasHook =
+        token0HasTransferHook || (token0Info.isToken2022 && token0Info.transferHook)
+      const token1HasHook =
+        token1HasTransferHook || (token1Info.isToken2022 && token1Info.transferHook)
+
       const token0ProgramId = token0Info.isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
       const token1ProgramId = token1Info.isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
 
+      // Ghi log thông tin các token để debug
+      console.log('Token 0 info:', {
+        mint: token0Mint,
+        isToken2022: token0Info.isToken2022,
+        hasTransferHook: token0HasHook,
+        programId: token0ProgramId.toString(),
+        extensions: token0Info.extensions || [],
+      })
+
+      console.log('Token 1 info:', {
+        mint: token1Mint,
+        isToken2022: token1Info.isToken2022,
+        hasTransferHook: token1HasHook,
+        programId: token1ProgramId.toString(),
+        extensions: token1Info.extensions || [],
+      })
+
+      // Tạo danh sách remainingAccounts ĐÚNG THỨ TỰ theo auto-whitelist-hook-pool-test.ts
+
       // Chỉ thêm tài khoản transfer hook cho token0 nếu nó có transfer hook
-      if (token0Info.isToken2022 && token0Info.transferHook) {
+      if (token0HasHook) {
         // Tính PDA cho whitelist và ExtraAccountMetaList cho token0
         const [whitelistPDA_token0] = PublicKey.findProgramAddressSync(
           [Buffer.from('white_list'), new PublicKey(token0Mint).toBuffer()],
@@ -215,16 +213,22 @@ export async function POST(request: NextRequest) {
           TRANSFER_HOOK_PROGRAM_ID
         )
 
-        // Thêm tài khoản cho token0
+        // Thêm tài khoản cho token0 ĐÚNG THỨ TỰ
         remainingAccounts.push(
           { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
           { pubkey: extraAccountMetaListPDA_token0, isWritable: false, isSigner: false },
           { pubkey: whitelistPDA_token0, isWritable: true, isSigner: false }
         )
+
+        console.log('Added transfer hook accounts for token0:', {
+          hookProgram: TRANSFER_HOOK_PROGRAM_ID.toString(),
+          extraAccountMetaList: extraAccountMetaListPDA_token0.toString(),
+          whitelist: whitelistPDA_token0.toString(),
+        })
       }
 
       // Chỉ thêm tài khoản transfer hook cho token1 nếu nó có transfer hook
-      if (token1Info.isToken2022 && token1Info.transferHook) {
+      if (token1HasHook) {
         // Tính PDA cho whitelist và ExtraAccountMetaList cho token1
         const [whitelistPDA_token1] = PublicKey.findProgramAddressSync(
           [Buffer.from('white_list'), new PublicKey(token1Mint).toBuffer()],
@@ -235,29 +239,40 @@ export async function POST(request: NextRequest) {
           TRANSFER_HOOK_PROGRAM_ID
         )
 
-        // Thêm tài khoản cho token1
+        // Thêm tài khoản cho token1 ĐÚNG THỨ TỰ
         remainingAccounts.push(
           { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
           { pubkey: extraAccountMetaListPDA_token1, isWritable: false, isSigner: false },
           { pubkey: whitelistPDA_token1, isWritable: true, isSigner: false }
         )
+
+        console.log('Added transfer hook accounts for token1:', {
+          hookProgram: TRANSFER_HOOK_PROGRAM_ID.toString(),
+          extraAccountMetaList: extraAccountMetaListPDA_token1.toString(),
+          whitelist: whitelistPDA_token1.toString(),
+        })
       }
 
-      // Tạo LP token address - sửa cách tính để tương thích với cả Token-2022
+      // QUAN TRỌNG: Wallet phải được thêm vào cuối cùng
+      remainingAccounts.push(
+        // Wallet với quyền ký - phải ở cuối cùng sau các tài khoản khác
+        { pubkey: new PublicKey(creatorPublicKey), isWritable: true, isSigner: true }
+      )
+
+      console.log(
+        'Total remaining accounts:',
+        remainingAccounts.length,
+        'Creator wallet:',
+        creatorPublicKey
+      )
+
+      // Tạo LP token address
       const creatorLpTokenAddressPubkey = getAssociatedTokenAddressSync(
         lpMintAddress,
         new PublicKey(creatorPublicKey),
         false,
         TOKEN_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
-      )
-
-      // Thêm tài khoản LP token và wallet vào remainingAccounts
-      remainingAccounts.push(
-        // Tài khoản LP token
-        { pubkey: creatorLpTokenAddressPubkey, isWritable: true, isSigner: false },
-        // Wallet với quyền ký
-        { pubkey: new PublicKey(creatorPublicKey), isWritable: true, isSigner: true }
       )
 
       // Tạo instruction để khởi tạo pool
@@ -308,7 +323,7 @@ export async function POST(request: NextRequest) {
       // Serialize giao dịch đã ký một phần để gửi về client
       const serializedTransaction = tx.serialize({ requireAllSignatures: false }).toString('base64')
 
-      // Chuẩn bị thông tin pool để lưu lên GitHub
+      // Thêm thông tin chi tiết hơn về transfer hook và Wrapped SOL
       const poolInfo = {
         poolAddress: poolKeypair.publicKey.toString(),
         lpMintAddress: lpMintAddress.toString(),
@@ -319,7 +334,8 @@ export async function POST(request: NextRequest) {
           mint: token0Mint,
           vault: vault0.toString(),
           isToken2022: token0Info.isToken2022,
-          hasTransferHook: token0Info.isToken2022 && token0Info.transferHook,
+          hasTransferHook: !!(token0Info.isToken2022 && token0Info.transferHook),
+          isWrappedSol: token0Mint === WSOL_MINT.toString(),
           extensions: token0Info.extensions || [],
           initialAmount: initAmount0,
           // Không có thông tin về symbol và name trong API route
@@ -329,7 +345,8 @@ export async function POST(request: NextRequest) {
           mint: token1Mint,
           vault: vault1.toString(),
           isToken2022: token1Info.isToken2022,
-          hasTransferHook: token1Info.isToken2022 && token1Info.transferHook,
+          hasTransferHook: !!(token1Info.isToken2022 && token1Info.transferHook),
+          isWrappedSol: token1Mint === WSOL_MINT.toString(),
           extensions: token1Info.extensions || [],
           initialAmount: initAmount1,
           // Không có thông tin về symbol và name trong API route

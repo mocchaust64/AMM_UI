@@ -1,0 +1,22 @@
+[
+  {
+    "mint": "2P7N9e8s2vTbnwwZR3nwQ2XkQHvhotwsRgXHZiHxf6yC",
+    "symbol": "USDC",
+    "name": "USD Coin",
+    "decimals": 6,
+    "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/AjkA5gkYy6J8QFV3ayhtqof5c6FAHmr18bHqPz4Q6b3U/logo.png",
+    "website": "https://www.centre.io/usdc",
+    "tokenAccount": "B9rhVcjZmim6JHnFKU2u729TvPUyA2XCSDNGUf7HfhyH",
+    "network": "devnet"
+  },
+  {
+    "mint": "So11111111111111111111111111111111111111112",
+    "symbol": "wSOL",
+    "name": "Wrapped SOL",
+    "decimals": 9,
+    "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+    "website": "https://solana.com",
+    "tokenAccount": "BgLnwtWFDN6gdcSaq4X2vnWguQ1akzyq13PSS5QEt2ah",
+    "network": "devnet"
+  }
+]

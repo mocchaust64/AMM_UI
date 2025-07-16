@@ -34,3 +34,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .app-logo {
+    @apply rounded-full;
+  }
+}

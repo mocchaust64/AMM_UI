@@ -25,7 +25,7 @@ export function Sidebar() {
             alt="MoonDex Logo"
             width={32}
             height={32}
-            className="object-contain"
+            className="object-contain rounded-full app-logo"
             priority
           />
         </div>

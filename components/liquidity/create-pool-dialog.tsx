@@ -21,10 +21,13 @@ import { toast } from 'sonner'
 import { TokenSelect, TokenSelectProps } from '@/components/TokenSelect/TokenSelect'
 import { useWalletTokens } from '@/hooks/useWalletTokens'
 import { usePoolCreation } from '@/hooks/usePoolCreation'
-import { Check, ExternalLink, Info } from 'lucide-react'
+import { Check, ExternalLink, Info, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { getDetailTokenExtensions } from '@/lib/service/tokenService'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { PoolFinder } from '@/lib/utils/pool-finder'
+import { PublicKey } from '@solana/web3.js'
+import { useAnchorProvider } from '@/hooks/useAnchorProvider'
 
 // Định nghĩa interface cho thông tin token
 interface TokenInfo {
@@ -279,12 +282,85 @@ function SuccessDialog(props: SuccessDialogProps) {
   )
 }
 
+// Thêm component AlertInfo để hiển thị thông tin về Transfer Hook và tự động whitelist
+interface AlertInfoProps {
+  showAlert: boolean
+  hasTransferHook: boolean
+}
+
+function AlertInfo({ showAlert, hasTransferHook }: AlertInfoProps) {
+  if (!showAlert) return null
+
+  return (
+    <Alert className="mt-4 bg-blue-900/20 text-blue-400 border-blue-800/50">
+      <Info className="h-5 w-5" />
+      <AlertTitle>Important Information</AlertTitle>
+      <AlertDescription className="text-sm">
+        {hasTransferHook ? (
+          <>
+            <p className="mb-1">
+              You are creating a pool with a token that has a Transfer Hook. The vault will be
+              automatically added to the token whitelist.
+            </p>
+          </>
+        ) : (
+          <>
+            <p>
+              You can use Wrapped SOL and other token types to create a pool with customized
+              liquidity.
+            </p>
+          </>
+        )}
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+// Thêm component hiển thị thông báo lỗi
+interface ErrorDisplayProps {
+  error: string | null
+  txHash?: string
+}
+
+function ErrorDisplay({ error, txHash }: ErrorDisplayProps) {
+  if (!error) return null
+
+  const getSolscanLink = (hash: string) => `https://solscan.io/tx/${hash}?cluster=devnet`
+
+  return (
+    <Alert variant="destructive" className="mt-4">
+      <AlertCircle className="h-5 w-5" />
+      <AlertTitle>Pool Creation Error</AlertTitle>
+      <AlertDescription>
+        <div className="space-y-2">
+          <p>{error}</p>
+          {txHash && (
+            <>
+              <p className="font-mono text-xs break-all">Transaction hash: {txHash}</p>
+              <a
+                href={getSolscanLink(txHash)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-white underline flex items-center gap-1"
+              >
+                View details on Solscan
+                <ExternalLink size={12} />
+              </a>
+            </>
+          )}
+        </div>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
 export function CreatePoolDialog(props: CreatePoolDialogProps) {
   const { _open: open, onOpenChange } = props
   const { connected: isConnected } = useWallet()
   const { setVisible } = useWalletModal()
   const { tokens } = useWalletTokens()
   const { createPool, error: poolCreationError } = usePoolCreation()
+  const { provider, program } = useAnchorProvider()
 
   const [poolType, setPoolType] = useState<'standard' | 'custom'>('standard')
   const [tokenAMint, setTokenAMint] = useState('')
@@ -292,6 +368,9 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
   const [amountA, setAmountA] = useState('')
   const [amountB, setAmountB] = useState('')
   const [creatingPool, setCreatingPool] = useState(false)
+  // Thêm state để kiểm tra trùng lặp pool
+  const [isDuplicatePool, setIsDuplicatePool] = useState(false)
+  const [duplicatePoolAddress, setDuplicatePoolAddress] = useState<string | null>(null)
 
   // State để lưu thông tin chi tiết về token extensions
   const [tokenAInfo, setTokenAInfo] = useState<TokenInfo | null>(null)
@@ -304,6 +383,13 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
     poolAddress: string
     lpMintAddress: string
   } | null>(null)
+
+  // Thêm state để kiểm tra xem có token nào có transfer hook không
+  const [showAutoWhitelistInfo, setShowAutoWhitelistInfo] = useState(false)
+  const [hasTransferHookToken, setHasTransferHookToken] = useState(false)
+
+  // Thêm state để lưu transaction hash lỗi
+  const [errorTxHash, setErrorTxHash] = useState<string | undefined>()
 
   useEffect(() => {
     if (poolCreationError) {
@@ -336,6 +422,79 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
     fetchTokenBInfo()
   }, [tokenBMint])
 
+  useEffect(() => {
+    // Kiểm tra nếu có token nào có transfer hook
+    const checkTransferHook = tokenAInfo?.transferHook || tokenBInfo?.transferHook
+    setHasTransferHookToken(!!checkTransferHook)
+
+    // Hiển thị thông tin chỉ khi cả hai token đã được chọn
+    if (tokenAMint && tokenBMint) {
+      setShowAutoWhitelistInfo(true)
+    } else {
+      setShowAutoWhitelistInfo(false)
+    }
+  }, [tokenAMint, tokenBMint, tokenAInfo, tokenBInfo])
+
+  // Sửa lại useEffect để lấy transaction hash từ lỗi
+  useEffect(() => {
+    if (poolCreationError) {
+      // Kiểm tra xem có transaction hash trong lỗi không
+      const txHashMatch = poolCreationError.match(/Transaction hash: ([a-zA-Z0-9]{43,})/)
+      const solscanMatch = poolCreationError.match(
+        /Solscan: https:\/\/solscan\.io\/tx\/([a-zA-Z0-9]{43,})/
+      )
+
+      if (txHashMatch && txHashMatch[1]) {
+        setErrorTxHash(txHashMatch[1])
+      } else if (solscanMatch && solscanMatch[1]) {
+        setErrorTxHash(solscanMatch[1])
+      } else {
+        setErrorTxHash(undefined)
+      }
+    } else {
+      setErrorTxHash(undefined)
+    }
+  }, [poolCreationError])
+
+  // Thêm effect để kiểm tra xem đã tồn tại pool với cặp token này chưa
+  useEffect(() => {
+    const checkExistingPool = async () => {
+      // Chỉ kiểm tra khi cả hai token đã được chọn và provider đã sẵn sàng
+      if (!tokenAMint || !tokenBMint || !provider || !program) {
+        setIsDuplicatePool(false)
+        setDuplicatePoolAddress(null)
+        return
+      }
+
+      try {
+        // Khởi tạo PoolFinder để tìm pool
+        const poolFinder = new PoolFinder(program, provider.connection)
+
+        // Tìm pool hiện có với cặp token này
+        const existingPool = await poolFinder.findPoolByTokens(
+          new PublicKey(tokenAMint),
+          new PublicKey(tokenBMint)
+        )
+
+        // Nếu tìm thấy pool, đánh dấu là trùng lặp
+        if (existingPool) {
+          setIsDuplicatePool(true)
+          setDuplicatePoolAddress(existingPool.poolAddress.toString())
+          toast.warning('A pool with these tokens already exists!')
+        } else {
+          setIsDuplicatePool(false)
+          setDuplicatePoolAddress(null)
+        }
+      } catch (error) {
+        console.error('Error checking for existing pool:', error)
+        setIsDuplicatePool(false)
+        setDuplicatePoolAddress(null)
+      }
+    }
+
+    checkExistingPool()
+  }, [tokenAMint, tokenBMint, provider, program])
+
   const tokenA = tokens.find(token => token.mint === tokenAMint)
   const tokenB = tokens.find(token => token.mint === tokenBMint)
 
@@ -346,6 +505,8 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
     excludeToken: tokenBMint,
     disabled: creatingPool,
     includeSol: false,
+    includeWrappedSol: true,
+    forPoolCreation: true,
     placeholder: 'Select token A',
   }
 
@@ -355,6 +516,8 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
     excludeToken: tokenAMint,
     disabled: creatingPool,
     includeSol: false,
+    includeWrappedSol: true,
+    forPoolCreation: true,
     placeholder: 'Select token B',
   }
 
@@ -391,6 +554,25 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
     }
   }
 
+  // Thêm hàm để xác thực số lượng token
+  const validateAmount = (value: string, token: any): string => {
+    // Loại bỏ các ký tự không phải số
+    const numericValue = value.replace(/[^0-9.]/g, '')
+
+    // Nếu giá trị không phải số hợp lệ, trả về chuỗi rỗng
+    if (isNaN(parseFloat(numericValue))) {
+      return ''
+    }
+
+    // Kiểm tra xem có token và giá trị có vượt quá số dư không
+    if (token && parseFloat(numericValue) > token.balance) {
+      toast.warning(`Amount exceeds your ${token.symbol} balance`)
+      return token.balance.toString()
+    }
+
+    return numericValue
+  }
+
   const handleCreatePool = async () => {
     if (!isConnected) {
       toast.error('Please connect your wallet first')
@@ -399,6 +581,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
 
     try {
       setCreatingPool(true)
+      setErrorTxHash(undefined) // Reset error hash khi bắt đầu tạo pool mới
 
       const tokenA = tokens.find(t => t.mint === tokenAMint)
       const tokenB = tokens.find(t => t.mint === tokenBMint)
@@ -442,6 +625,21 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
       setSuccessDialogOpen(true)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create pool'
+
+      // Kiểm tra xem có transaction hash trong lỗi không
+      if (typeof errorMessage === 'string') {
+        const txHashMatch = errorMessage.match(/Transaction hash: ([a-zA-Z0-9]{43,})/)
+        const solscanMatch = errorMessage.match(
+          /Solscan: https:\/\/solscan\.io\/tx\/([a-zA-Z0-9]{43,})/
+        )
+
+        if (txHashMatch && txHashMatch[1]) {
+          setErrorTxHash(txHashMatch[1])
+        } else if (solscanMatch && solscanMatch[1]) {
+          setErrorTxHash(solscanMatch[1])
+        }
+      }
+
       toast.error(errorMessage)
     } finally {
       setCreatingPool(false)
@@ -467,6 +665,26 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
     }
 
     return typeDescription
+  }
+
+  // Hiển thị thông báo trùng lặp nếu phát hiện pool đã tồn tại
+  const renderDuplicatePoolWarning = () => {
+    if (!isDuplicatePool) return null
+
+    return (
+      <Alert className="mt-4 bg-amber-900/20 text-amber-400 border-amber-800/50">
+        <AlertCircle className="h-5 w-5" />
+        <AlertTitle>Pool Already Exists</AlertTitle>
+        <AlertDescription className="text-sm">
+          <p className="mb-1">
+            A pool with these tokens already exists. You cannot create a duplicate pool.
+          </p>
+          {duplicatePoolAddress && (
+            <p className="text-xs font-mono">Pool address: {duplicatePoolAddress}</p>
+          )}
+        </AlertDescription>
+      </Alert>
+    )
   }
 
   return (
@@ -513,7 +731,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                       type="number"
                       placeholder="0.0"
                       value={amountA}
-                      onChange={e => setAmountA(e.target.value)}
+                      onChange={e => setAmountA(validateAmount(e.target.value, tokenA))}
                     />
                     {tokenA && (
                       <Badge variant="outline" className="whitespace-nowrap">
@@ -531,7 +749,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                       type="number"
                       placeholder="0.0"
                       value={amountB}
-                      onChange={e => setAmountB(e.target.value)}
+                      onChange={e => setAmountB(validateAmount(e.target.value, tokenB))}
                     />
                     {tokenB && (
                       <Badge variant="outline" className="whitespace-nowrap">
@@ -567,7 +785,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                       type="number"
                       placeholder="0.0"
                       value={amountA}
-                      onChange={e => setAmountA(e.target.value)}
+                      onChange={e => setAmountA(validateAmount(e.target.value, tokenA))}
                       disabled={creatingPool}
                     />
                     {tokenA && (
@@ -586,7 +804,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                       type="number"
                       placeholder="0.0"
                       value={amountB}
-                      onChange={e => setAmountB(e.target.value)}
+                      onChange={e => setAmountB(validateAmount(e.target.value, tokenB))}
                       disabled={creatingPool}
                     />
                     {tokenB && (
@@ -662,6 +880,15 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
             </Card>
           )}
 
+          {/* Thêm AlertInfo component ở đây */}
+          <AlertInfo showAlert={showAutoWhitelistInfo} hasTransferHook={hasTransferHookToken} />
+
+          {/* Thêm thông báo trùng lặp nếu có */}
+          {renderDuplicatePoolWarning()}
+
+          {/* Hiển thị thông báo lỗi nếu có */}
+          <ErrorDisplay error={poolCreationError} txHash={errorTxHash} />
+
           <DialogFooter>
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={creatingPool}>
               Cancel
@@ -674,9 +901,20 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
               <Button
                 onClick={handleCreatePool}
                 className="w-full"
-                disabled={creatingPool || !tokenAMint || !tokenBMint || !amountA || !amountB}
+                disabled={
+                  creatingPool ||
+                  !tokenAMint ||
+                  !tokenBMint ||
+                  !amountA ||
+                  !amountB ||
+                  isDuplicatePool
+                }
               >
-                {creatingPool ? 'Creating Pool...' : 'Create Pool'}
+                {creatingPool
+                  ? 'Creating Pool...'
+                  : isDuplicatePool
+                    ? 'Pool Already Exists'
+                    : 'Create Pool'}
               </Button>
             )}
           </DialogFooter>

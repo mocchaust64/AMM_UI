@@ -43,8 +43,9 @@ export default function SwapPage() {
   const [toToken, setToToken] = useState<string>('')
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
 
-  // State cho pool được chọn từ GitHub
+  // State cho pool được chọn từ GitHub - giá trị ban đầu là null
   const [selectedPool, setSelectedPool] = useState<Pool | null>(null)
+  const [availablePools, setAvailablePools] = useState<Pool[]>([])
   const [loadingDefaultPool, setLoadingDefaultPool] = useState<boolean>(true)
 
   // Lấy thời gian cập nhật token cuối cùng từ localStorage
@@ -67,66 +68,27 @@ export default function SwapPage() {
     }
   }, [tokens])
 
-  // Tải pool mặc định từ GitHub khi component được mount
+  // Tải danh sách pools từ GitHub nhưng không tự động chọn pool mặc định
+  // Load pool list from GitHub but don't automatically select a default pool
   useEffect(() => {
-    const loadDefaultPool = async () => {
+    const loadPools = async () => {
       setLoadingDefaultPool(true)
       try {
         const pools = await GithubPoolService.getAllPools()
         if (pools && pools.length > 0) {
-          const firstPool = pools[0]
-          setSelectedPool(firstPool)
-
-          // Đặt token mints từ pool đầu tiên
-          if (firstPool.token0?.mint) {
-            setFromToken(firstPool.token0.mint)
-          }
-          if (firstPool.token1?.mint) {
-            setToToken(firstPool.token1.mint)
-          }
+          setAvailablePools(pools)
+          // Don't automatically select pool and set tokens anymore
+          // Let the user choose which pool they want to use
         }
       } catch (error) {
-        console.error('Lỗi khi tải pool mặc định:', error)
+        console.error('Error loading pools from GitHub:', error)
       } finally {
         setLoadingDefaultPool(false)
       }
     }
 
-    loadDefaultPool()
+    loadPools()
   }, [])
-
-  const recentSwaps = [
-    {
-      from: 'SOL',
-      to: 'USDC',
-      amount: '5.2',
-      value: '$520.40',
-      time: '2 min ago',
-      signature: '3xR7...',
-      fee: '0.000005 SOL',
-      price: '1 SOL = 100.08 USDC',
-    },
-    {
-      from: 'USDC',
-      to: 'RAY',
-      amount: '100',
-      value: '$100.00',
-      time: '15 min ago',
-      signature: '5tT3...',
-      fee: '0.000005 SOL',
-      price: '1 USDC = 0.5 RAY',
-    },
-    {
-      from: 'RAY',
-      to: 'SOL',
-      amount: '50',
-      value: '$75.50',
-      time: '1 hour ago',
-      signature: '9jK1...',
-      fee: '0.000005 SOL',
-      price: '1 RAY = 0.0151 SOL',
-    },
-  ]
 
   const selectedFromToken = tokens.find(t => t.mint === fromToken)
   const selectedToToken = tokens.find(t => t.mint === toToken)
@@ -157,6 +119,8 @@ export default function SwapPage() {
                   onToTokenChange={setToToken}
                   initialPoolAddress={selectedPool?.poolAddress}
                   loading={loadingDefaultPool}
+                  availablePools={availablePools}
+                  onSelectPool={setSelectedPool}
                 />
               </div>
 
@@ -195,48 +159,6 @@ export default function SwapPage() {
                   </CardContent>
                 </Card>
               </div>
-            </div>
-
-            {/* Recent Swaps - đã mở rộng với thêm thông tin chi tiết */}
-            <div className="mt-6 max-w-8xl mx-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Swaps</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {recentSwaps.map((swap, index) => (
-                    <div key={index} className="bg-muted/50 roundedx-lg overflow-hidden">
-                      <div className="flex items-center justify-between p-3 border-b border-border/50">
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="px-2 py-1">
-                            {swap.from} → {swap.to}
-                          </Badge>
-                          <div>
-                            <p className="font-semibold">
-                              {swap.amount} {swap.from}
-                            </p>
-                            <p className="text-sm text-muted-foreground">{swap.value}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">{swap.time}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Signature: {swap.signature}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 p-3 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Price:</span> {swap.price}
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Network Fee:</span> {swap.fee}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
             </div>
           </main>
         </div>

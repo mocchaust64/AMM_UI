@@ -2,6 +2,10 @@ import { Program } from '@coral-xyz/anchor'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { RaydiumCpSwap } from '../../idl/types/raydium_cp_swap'
 import { TokenService } from './tokenService'
+import { getDetailTokenExtensions } from './tokenService'
+
+// Định nghĩa hằng số
+const WSOL_MINT = new PublicKey('So11111111111111111111111111111111111111112')
 
 interface PoolInfo {
   poolAddress: PublicKey
@@ -11,6 +15,16 @@ interface PoolInfo {
   token0Balance?: number
   token1Balance?: number
   ammConfig: PublicKey
+  token0Info?: TokenExtInfo // Thêm thông tin token extension
+  token1Info?: TokenExtInfo // Thêm thông tin token extension
+}
+
+// Interface cho thông tin extension của token
+interface TokenExtInfo {
+  isToken2022?: boolean
+  hasTransferHook?: boolean
+  isWrappedSol?: boolean
+  extensions?: string[]
 }
 
 // Interface cho PoolState từ program account
@@ -28,7 +42,14 @@ interface PoolState {
 interface DetailedPoolInfo {
   poolAddress: string
   name: string
-  tokens: { symbol: string; icon: string; mint: string }[]
+  tokens: {
+    symbol: string
+    icon: string
+    mint: string
+    isToken2022?: boolean
+    hasTransferHook?: boolean
+    isWrappedSol?: boolean
+  }[]
   tvl: string
   apy: string
   volume24h: string
@@ -77,6 +98,24 @@ export class PoolService {
       const token0VaultBalance = await this.connection.getTokenAccountBalance(poolInfo.token0Vault)
       const token1VaultBalance = await this.connection.getTokenAccountBalance(poolInfo.token1Vault)
 
+      // Lấy thông tin về token extensions
+      const token0ExtInfo = await getDetailTokenExtensions(poolInfo.token0Mint.toString())
+      const token1ExtInfo = await getDetailTokenExtensions(poolInfo.token1Mint.toString())
+
+      const token0Info: TokenExtInfo = {
+        isToken2022: token0ExtInfo.isToken2022,
+        hasTransferHook: !!(token0ExtInfo.isToken2022 && token0ExtInfo.transferHook),
+        isWrappedSol: poolInfo.token0Mint.equals(WSOL_MINT),
+        extensions: token0ExtInfo.extensions || [],
+      }
+
+      const token1Info: TokenExtInfo = {
+        isToken2022: token1ExtInfo.isToken2022,
+        hasTransferHook: !!(token1ExtInfo.isToken2022 && token1ExtInfo.transferHook),
+        isWrappedSol: poolInfo.token1Mint.equals(WSOL_MINT),
+        extensions: token1ExtInfo.extensions || [],
+      }
+
       return {
         poolAddress,
         poolInfo,
@@ -85,6 +124,8 @@ export class PoolService {
         token0Balance: token0VaultBalance?.value?.uiAmount || 0,
         token1Balance: token1VaultBalance?.value?.uiAmount || 0,
         ammConfig: poolInfo.ammConfig,
+        token0Info,
+        token1Info,
       }
     } catch (error) {
       console.error('Error finding pool by token pair:', error)
@@ -119,6 +160,24 @@ export class PoolService {
             poolInfo.token1Vault
           )
 
+          // Lấy thông tin về token extensions
+          const token0ExtInfo = await getDetailTokenExtensions(poolInfo.token0Mint.toString())
+          const token1ExtInfo = await getDetailTokenExtensions(poolInfo.token1Mint.toString())
+
+          const token0Info: TokenExtInfo = {
+            isToken2022: token0ExtInfo.isToken2022,
+            hasTransferHook: !!(token0ExtInfo.isToken2022 && token0ExtInfo.transferHook),
+            isWrappedSol: poolInfo.token0Mint.equals(WSOL_MINT),
+            extensions: token0ExtInfo.extensions || [],
+          }
+
+          const token1Info: TokenExtInfo = {
+            isToken2022: token1ExtInfo.isToken2022,
+            hasTransferHook: !!(token1ExtInfo.isToken2022 && token1ExtInfo.transferHook),
+            isWrappedSol: poolInfo.token1Mint.equals(WSOL_MINT),
+            extensions: token1ExtInfo.extensions || [],
+          }
+
           return {
             poolAddress,
             poolInfo,
@@ -127,6 +186,8 @@ export class PoolService {
             token0Balance: token0VaultBalance?.value?.uiAmount || 0,
             token1Balance: token1VaultBalance?.value?.uiAmount || 0,
             ammConfig: poolInfo.ammConfig,
+            token0Info,
+            token1Info,
           }
         })
       )
@@ -175,7 +236,7 @@ export class PoolService {
           const token0MintAddress = poolState.token0Mint.toString()
           const token1MintAddress = poolState.token1Mint.toString()
 
-          // Lấy thông tin token sử dụng hàm mới getTokenIconAndName
+          // Lấy thông tin token sử dụng hàm getTokenIconAndName
           const token0Info = await TokenService.getTokenIconAndName(
             token0MintAddress,
             this.connection
@@ -184,6 +245,10 @@ export class PoolService {
             token1MintAddress,
             this.connection
           )
+
+          // Lấy thông tin token extensions
+          const token0ExtInfo = await getDetailTokenExtensions(token0MintAddress)
+          const token1ExtInfo = await getDetailTokenExtensions(token1MintAddress)
 
           // Lấy thông tin token balance trong pool
           const token0VaultBalance = await this.connection.getTokenAccountBalance(
@@ -198,20 +263,30 @@ export class PoolService {
           const token1Value = token1VaultBalance?.value?.uiAmount || 0
           const tvl = token0Value + token1Value
 
+          // Kiểm tra xem có token nào là Wrapped SOL không
+          const token0IsWrappedSol = token0MintAddress === WSOL_MINT.toString()
+          const token1IsWrappedSol = token1MintAddress === WSOL_MINT.toString()
+
           // Tạo thông tin chi tiết về pool
           userPools.push({
             poolAddress: poolAccount.publicKey.toString(),
-            name: `${token0Info.symbol}/${token1Info.symbol}`,
+            name: `${token0IsWrappedSol ? 'SOL' : token0Info.symbol}/${token1IsWrappedSol ? 'SOL' : token1Info.symbol}`,
             tokens: [
               {
-                symbol: token0Info.symbol,
+                symbol: token0IsWrappedSol ? 'SOL' : token0Info.symbol,
                 icon: token0Info.icon,
                 mint: token0MintAddress,
+                isToken2022: token0ExtInfo.isToken2022,
+                hasTransferHook: !!(token0ExtInfo.isToken2022 && token0ExtInfo.transferHook),
+                isWrappedSol: token0IsWrappedSol,
               },
               {
-                symbol: token1Info.symbol,
+                symbol: token1IsWrappedSol ? 'SOL' : token1Info.symbol,
                 icon: token1Info.icon,
                 mint: token1MintAddress,
+                isToken2022: token1ExtInfo.isToken2022,
+                hasTransferHook: !!(token1ExtInfo.isToken2022 && token1ExtInfo.transferHook),
+                isWrappedSol: token1IsWrappedSol,
               },
             ],
             tvl: `$${tvl.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,

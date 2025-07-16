@@ -22,6 +22,7 @@ export interface TokenData {
 interface UseWalletTokensOptions {
   includeSol?: boolean
   forceRefresh?: boolean
+  includeWrappedSol?: boolean
 }
 
 interface Token {
@@ -52,7 +53,11 @@ const TOKENS_CACHE_KEY = 'wallet_tokens_cache'
 export const WSOL_MINT = 'So11111111111111111111111111111111111111112'
 
 export function useWalletTokens(
-  options: UseWalletTokensOptions = { includeSol: true, forceRefresh: false }
+  options: UseWalletTokensOptions = {
+    includeSol: true,
+    forceRefresh: false,
+    includeWrappedSol: false,
+  }
 ) {
   const { connection } = useConnection()
   const { publicKey } = useWallet()
@@ -300,6 +305,14 @@ export function useWalletTokens(
         let tokenSymbol = tokenInfo?.symbol || account.mint.slice(0, 4).toUpperCase()
         let tokenImage = tokenInfo?.logoURI
 
+        // Kiểm tra nếu là Wrapped SOL
+        if (account.mint === WSOL_MINT) {
+          tokenName = 'Wrapped SOL'
+          tokenSymbol = 'wSOL'
+          tokenImage =
+            'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
+        }
+
         // Chỉ tìm metadata cho token-2022, bỏ qua SPL token thông thường
         if (account.isToken2022 && (!tokenInfo || !tokenImage)) {
           try {
@@ -356,8 +369,42 @@ export function useWalletTokens(
         address: publicKey.toString(), // SOL address là địa chỉ ví
       }
 
-      // Chỉ thêm SOL nếu tùy chọn includeSol được đặt thành true
-      const finalTokens = options.includeSol ? [solToken, ...tokensData] : tokensData
+      // Kiểm tra wSOL account
+      let wrappedSolToken: TokenData | null = null
+
+      if (options.includeWrappedSol) {
+        // Lấy WrappedSOL token từ danh sách token nếu đã có
+        wrappedSolToken = tokensData.find(token => token.mint === WSOL_MINT) || null
+
+        // Nếu chưa có, tạo mới với balance = 0
+        if (!wrappedSolToken) {
+          wrappedSolToken = {
+            mint: WSOL_MINT,
+            symbol: 'wSOL',
+            name: 'Wrapped SOL',
+            icon: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
+            balance: 0,
+            decimals: 9,
+            address: '', // Sẽ được tạo khi cần
+          }
+        }
+      }
+
+      // Thêm token vào kết quả cuối cùng tùy thuộc vào options
+      const finalTokens: TokenData[] = [...tokensData]
+
+      if (options.includeSol) {
+        finalTokens.unshift(solToken) // Thêm SOL vào đầu danh sách
+      }
+
+      if (
+        options.includeWrappedSol &&
+        wrappedSolToken &&
+        !finalTokens.some(t => t.mint === WSOL_MINT)
+      ) {
+        finalTokens.unshift(wrappedSolToken) // Thêm wSOL vào đầu danh sách nếu chưa có
+      }
+
       setTokens(finalTokens)
 
       // Lưu kết quả vào cache
@@ -372,6 +419,7 @@ export function useWalletTokens(
     publicKey,
     connection,
     options.includeSol,
+    options.includeWrappedSol,
     options.forceRefresh,
     loadTokenList,
     getExistingTokenAccounts,

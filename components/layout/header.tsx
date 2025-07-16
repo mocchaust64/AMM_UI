@@ -46,17 +46,34 @@ export function Header() {
   return (
     <header className="flex h-16 items-center justify-between border-b px-6">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3">
+        {/* <div className="flex items-center gap-3">
           <div className="relative h-10 w-10"></div>
           <div>
             <h1 className="text-xl font-semibold">MoonDex</h1>
             <p className="text-sm text-muted-foreground">Solana Network</p>
           </div>
+        </div> */}
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="relative h-10 w-10"></div>
+          <div>
+            <h1 className="text-xl font-semibold">Airdrop Token for swap</h1>
+            <p className="text-sm text-muted-foreground text-center">
+              click{' '}
+              <a
+                href="/airdrop"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 hover:underline"
+              >
+                here
+              </a>{' '}
+              to get free tokens for swap
+            </p>
+          </div>
         </div>
-        <Badge variant="secondary" className="bg-green-500/10 text-green-500">
-          <div className="h-2 w-2 rounded-full bg-green-500 mr-2" />
-          Connected
-        </Badge>
       </div>
 
       <div className="flex items-center gap-3">
@@ -115,6 +132,10 @@ export function Header() {
             {t('wallet.connect')}
           </Button>
         )}
+        <Badge variant="secondary" className="bg-green-500/10 text-green-500">
+          <div className="h-2 w-2 rounded-full bg-green-500 mr-2" />
+          Connected
+        </Badge>
       </div>
     </header>
   )

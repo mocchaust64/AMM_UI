@@ -13,6 +13,12 @@ export interface GithubTokenInfo {
   icon?: string
   isToken2022?: boolean
   hasTransferHook?: boolean
+  // Thêm các trường mới cho metadata
+  description?: string
+  uri?: string
+  externalUrl?: string
+  supply?: string
+  metadata?: any // Metadata có thể được lưu trữ để sử dụng sau này
 }
 
 // Interface cho pool từ GitHub
@@ -122,7 +128,7 @@ export class GithubPoolService {
       )
     }
 
-    // Lấy thông tin tên và icon cho token
+    // Lấy thông tin tên và icon cho token từ danh sách token
     let tokenInfo
     try {
       tokenInfo = await TokenService.getTokenIconAndName(tokenMint, connection)
@@ -133,6 +139,14 @@ export class GithubPoolService {
         symbol: existingTokenInfo.symbol || `Token-${tokenMint.slice(0, 4)}`,
         icon: existingTokenInfo.icon || '/placeholder-logo.svg',
       }
+    }
+
+    // Thử lấy thêm thông tin metadata từ Metaplex
+    let metaplexMetadata = null
+    try {
+      metaplexMetadata = await TokenService.getMetaplexTokenMetadata(tokenMint, connection)
+    } catch (error) {
+      console.log(`Error fetching Metaplex metadata for ${tokenMint}:`, error)
     }
 
     // Lấy thông tin về token extensions
@@ -150,13 +164,29 @@ export class GithubPoolService {
     // Kết hợp thông tin
     return {
       mint: tokenMint,
-      symbol: tokenInfo.symbol || existingTokenInfo.symbol || `Token-${tokenMint.slice(0, 4)}`,
-      name: tokenInfo.name || existingTokenInfo.name || `Token ${tokenMint.slice(0, 8)}`,
+      symbol:
+        tokenInfo.symbol ||
+        metaplexMetadata?.symbol ||
+        existingTokenInfo.symbol ||
+        `Token-${tokenMint.slice(0, 4)}`,
+      name:
+        tokenInfo.name ||
+        metaplexMetadata?.name ||
+        existingTokenInfo.name ||
+        `Token ${tokenMint.slice(0, 8)}`,
       decimals: existingTokenInfo.decimals || 9,
-      icon: tokenInfo.icon || existingTokenInfo.icon || '/placeholder-logo.svg',
+      icon:
+        tokenInfo.icon ||
+        metaplexMetadata?.image ||
+        existingTokenInfo.icon ||
+        '/placeholder-logo.svg',
       isToken2022: extensionInfo?.isToken2022 || existingTokenInfo.isToken2022 || false,
       hasTransferHook:
         extensionInfo?.transferHook !== null || existingTokenInfo.hasTransferHook || false,
+      // Thêm thông tin metadata
+      description: metaplexMetadata?.description || existingTokenInfo.description,
+      uri: metaplexMetadata?.uri || existingTokenInfo.uri,
+      metadata: metaplexMetadata || existingTokenInfo.metadata,
     }
   }
 
@@ -250,6 +280,14 @@ export class GithubPoolService {
               }
             }
 
+            // Thử lấy thông tin metadata từ Metaplex
+            let metaplexMetadata = null
+            try {
+              metaplexMetadata = await TokenService.getMetaplexTokenMetadata(mint, connection)
+            } catch (error) {
+              console.log(`Error fetching Metaplex metadata for ${mint}:`, error)
+            }
+
             // Lấy thông tin về token extension
             let extensionInfo
             try {
@@ -264,15 +302,27 @@ export class GithubPoolService {
 
             tokenMap.set(mint, {
               mint: mint,
-              symbol: tokenInfo.symbol || pool.token0.symbol || `Token-${mint.slice(0, 4)}`,
-              name: tokenInfo.name || pool.token0.name || `Token ${mint.slice(0, 8)}`,
+              symbol:
+                tokenInfo.symbol ||
+                metaplexMetadata?.symbol ||
+                pool.token0.symbol ||
+                `Token-${mint.slice(0, 4)}`,
+              name:
+                tokenInfo.name ||
+                metaplexMetadata?.name ||
+                pool.token0.name ||
+                `Token ${mint.slice(0, 8)}`,
               decimals: pool.token0.decimals || 9,
-              icon: tokenInfo.icon || pool.token0.icon || '',
+              icon: tokenInfo.icon || metaplexMetadata?.image || pool.token0.icon || '',
               balance: 0, // Không có thông tin số dư
               address: '', // Không có thông tin địa chỉ token account
               isToken2022: extensionInfo?.isToken2022 || pool.token0.isToken2022 || false,
               hasTransferHook:
                 extensionInfo?.transferHook !== null || pool.token0.hasTransferHook || false,
+              // Thêm thông tin metadata
+              description: metaplexMetadata?.description || pool.token0.description,
+              uri: metaplexMetadata?.uri || pool.token0.uri,
+              metadata: metaplexMetadata || pool.token0.metadata,
             })
           }
         }
@@ -294,6 +344,14 @@ export class GithubPoolService {
               }
             }
 
+            // Thử lấy thông tin metadata từ Metaplex
+            let metaplexMetadata = null
+            try {
+              metaplexMetadata = await TokenService.getMetaplexTokenMetadata(mint, connection)
+            } catch (error) {
+              console.log(`Error fetching Metaplex metadata for ${mint}:`, error)
+            }
+
             // Lấy thông tin về token extension
             let extensionInfo
             try {
@@ -308,15 +366,27 @@ export class GithubPoolService {
 
             tokenMap.set(mint, {
               mint: mint,
-              symbol: tokenInfo.symbol || pool.token1.symbol || `Token-${mint.slice(0, 4)}`,
-              name: tokenInfo.name || pool.token1.name || `Token ${mint.slice(0, 8)}`,
+              symbol:
+                tokenInfo.symbol ||
+                metaplexMetadata?.symbol ||
+                pool.token1.symbol ||
+                `Token-${mint.slice(0, 4)}`,
+              name:
+                tokenInfo.name ||
+                metaplexMetadata?.name ||
+                pool.token1.name ||
+                `Token ${mint.slice(0, 8)}`,
               decimals: pool.token1.decimals || 9,
-              icon: tokenInfo.icon || pool.token1.icon || '',
-              balance: 0, // Không có thông tin số dư
-              address: '', // Không có thông tin địa chỉ token account
+              icon: tokenInfo.icon || metaplexMetadata?.image || pool.token1.icon || '',
+              balance: 0,
+              address: '',
               isToken2022: extensionInfo?.isToken2022 || pool.token1.isToken2022 || false,
               hasTransferHook:
                 extensionInfo?.transferHook !== null || pool.token1.hasTransferHook || false,
+              // Thêm thông tin metadata
+              description: metaplexMetadata?.description || pool.token1.description,
+              uri: metaplexMetadata?.uri || pool.token1.uri,
+              metadata: metaplexMetadata || pool.token1.metadata,
             })
           }
         }
@@ -328,5 +398,14 @@ export class GithubPoolService {
       console.error('Error fetching pool tokens:', error)
       return []
     }
+  }
+
+  /**
+   * Lấy danh sách token từ các pool
+   * Phương thức này dành cho instance của lớp
+   * @returns Danh sách token duy nhất từ các pool
+   */
+  async getTokens(): Promise<GithubTokenInfo[]> {
+    return GithubPoolService.getAllPoolTokens()
   }
 }

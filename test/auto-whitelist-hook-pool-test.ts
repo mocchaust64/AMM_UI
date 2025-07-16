@@ -1627,6 +1627,159 @@ async function main() {
       } catch (error) {
         console.error('Lỗi khi tạo pool với SPL token và token-2022 có transfer hook:', error)
       }
+
+      // TEST 5: Tạo pool giữa Token-2022 có Transfer Hook và Wrapped SOL
+      console.log('\n\n=== TEST 5: TẠO POOL GIỮA TOKEN-2022 CÓ TRANSFER HOOK VÀ WRAPPED SOL ===')
+
+      // Tạo token-2022 với transfer hook
+      const hook5TokenResult = await createToken2022WithTransferHook(connection, payer)
+      console.log('Token-2022 có transfer hook:', hook5TokenResult.mint.toString())
+
+      // Tạo Wrapped SOL account với 2 SOL
+      const hook5WrappedSolAccount = await createWrappedSolAccount(connection, payer, 2)
+      console.log('Wrapped SOL account:', hook5WrappedSolAccount.toString())
+
+      // Wrapped SOL mint address
+      const hook5WrappedSolMint = new PublicKey('So11111111111111111111111111111111111111112')
+
+      // Đợi để đảm bảo token balance đã được cập nhật
+      console.log('Đợi 5 giây để đảm bảo số dư được cập nhật...')
+      await delay(5000)
+
+      // Sắp xếp token để đảm bảo token0 < token1
+      let hook5Token0Mint, hook5Token1Mint, hook5Token0Account, hook5Token1Account
+      let hook5TokenMint
+
+      if (hook5TokenResult.mint.toBuffer().compare(hook5WrappedSolMint.toBuffer()) < 0) {
+        hook5Token0Mint = hook5TokenResult.mint
+        hook5Token1Mint = hook5WrappedSolMint
+        hook5Token0Account = hook5TokenResult.tokenAccount
+        hook5Token1Account = hook5WrappedSolAccount
+        hook5TokenMint = hook5TokenResult.mint
+        console.log('Token0 (có transfer hook):', hook5Token0Mint.toString())
+        console.log('Token1 (Wrapped SOL):', hook5Token1Mint.toString())
+      } else {
+        hook5Token0Mint = hook5WrappedSolMint
+        hook5Token1Mint = hook5TokenResult.mint
+        hook5Token0Account = hook5WrappedSolAccount
+        hook5Token1Account = hook5TokenResult.tokenAccount
+        hook5TokenMint = hook5TokenResult.mint
+        console.log('Token0 (Wrapped SOL):', hook5Token0Mint.toString())
+        console.log('Token1 (có transfer hook):', hook5Token1Mint.toString())
+      }
+
+      try {
+        // Thêm wallet vào whitelist của token có transfer hook
+        await initializeWhitelistAndAddAddress(connection, payer, hook5TokenMint, wallet.publicKey)
+
+        // Kiểm tra whitelist trước khi tạo pool
+        console.log('\n=== Whitelist trước khi khởi tạo pool ===')
+        await logWhitelistAddresses(connection, hook5TokenMint)
+
+        // Khởi tạo pool với token-2022 có transfer hook và Wrapped SOL
+        const hookSolPoolInfo = await initializePool(
+          program,
+          ammConfigAddress,
+          hook5Token0Mint,
+          hook5Token1Mint,
+          hook5Token0Account,
+          hook5Token1Account,
+          new BN(3_000_000_000), // 3 token0
+          new BN(3_000_000_000), // 3 token1
+          wallet
+        )
+
+        console.log('=== HOÀN TẤT TẠO POOL GIỮA TOKEN-2022 CÓ TRANSFER HOOK VÀ WRAPPED SOL ===')
+        console.log('Pool Address:', hookSolPoolInfo.poolAddress.toString())
+        console.log('LP Mint Address:', hookSolPoolInfo.lpMintAddress.toString())
+
+        // Kiểm tra whitelist sau khi tạo pool
+        console.log('\n=== Whitelist sau khi khởi tạo pool ===')
+        await logWhitelistAddresses(connection, hook5TokenMint)
+
+        // Đợi một chút trước khi thực hiện swap
+        console.log('Đợi 5 giây trước khi thực hiện swap...')
+        await delay(5000)
+
+        // Swap từ token-2022 có transfer hook sang Wrapped SOL
+        console.log('\n=== BẮT ĐẦU TEST SWAP TỪ TOKEN-2022 CÓ TRANSFER HOOK SANG WRAPPED SOL ===')
+        
+        // Xác định chiều swap dựa trên token nào là token0
+        if (hook5Token0Mint.equals(hook5TokenMint)) {
+          await swapTokens(
+            program,
+            hookSolPoolInfo.poolAddress,
+            hook5Token0Mint,
+            hook5Token1Mint,
+            hook5Token0Account,
+            hook5Token1Account,
+            new BN(500_000_000), // Swap 0.5 token-2022
+            new BN(450_000_000), // Minimum nhận lại 0.45 WSOL
+            wallet,
+            connection,
+            payer,
+            hook5TokenMint
+          )
+        } else {
+          await swapTokens(
+            program,
+            hookSolPoolInfo.poolAddress,
+            hook5Token1Mint,
+            hook5Token0Mint,
+            hook5Token1Account,
+            hook5Token0Account,
+            new BN(500_000_000), // Swap 0.5 token-2022
+            new BN(450_000_000), // Minimum nhận lại 0.45 WSOL
+            wallet,
+            connection,
+            payer,
+            hook5TokenMint
+          )
+        }
+
+        // Swap ngược từ Wrapped SOL sang token-2022 có transfer hook
+        console.log('\n=== BẮT ĐẦU TEST SWAP TỪ WRAPPED SOL SANG TOKEN-2022 CÓ TRANSFER HOOK ===')
+        
+        // Xác định chiều swap dựa trên token nào là token0
+        if (hook5Token0Mint.equals(hook5WrappedSolMint)) {
+          await swapTokens(
+            program,
+            hookSolPoolInfo.poolAddress,
+            hook5Token0Mint,
+            hook5Token1Mint,
+            hook5Token0Account,
+            hook5Token1Account,
+            new BN(450_000_000), // Swap 0.45 WSOL
+            new BN(400_000_000), // Minimum nhận lại 0.4 token-2022
+            wallet,
+            connection,
+            payer,
+            hook5TokenMint
+          )
+        } else {
+          await swapTokens(
+            program,
+            hookSolPoolInfo.poolAddress,
+            hook5Token1Mint,
+            hook5Token0Mint,
+            hook5Token1Account,
+            hook5Token0Account,
+            new BN(450_000_000), // Swap 0.45 WSOL
+            new BN(400_000_000), // Minimum nhận lại 0.4 token-2022
+            wallet,
+            connection,
+            payer,
+            hook5TokenMint
+          )
+        }
+
+        console.log('\n=== HOÀN TẤT TEST SWAP GIỮA TOKEN-2022 CÓ TRANSFER HOOK VÀ WRAPPED SOL ===')
+      } catch (error) {
+        console.error('Lỗi khi tạo pool giữa Token-2022 có transfer hook và Wrapped SOL:', error)
+        if (error && typeof error === 'object' && 'logs' in error) {
+          console.log('Lỗi chi tiết:', (error as ErrorWithLogs).logs)
+        }
+      }
     } catch (error) {
       console.error('Lỗi khi thực hiện test:', error)
     }

@@ -138,6 +138,7 @@ export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionD
   }
 
   // Hiển thị thông báo phù hợp nếu token không phải token-2022
+  // Display appropriate message if token is not token-2022
   const renderContent = () => {
     if (!token) {
       return <div>No token information available</div>

@@ -40,7 +40,7 @@ export function TokenIconDisplay({
             alt={token.symbol}
             width={32}
             height={32}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover app-logo"
           />
         ) : (
           <div className="text-white font-semibold text-xs">{token.symbol.slice(0, 2)}</div>
@@ -77,7 +77,7 @@ export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
       }
     }
 
-    // Chỉ tìm extensions cho token-2022
+    // Only find extensions for token-2022
     if (token && token.mint !== 'SOL' && token.isToken2022) {
       fetchTokenExtensions()
     } else {
@@ -90,12 +90,12 @@ export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
   if (!token) {
     return (
       <Card className="p-4 flex items-center justify-center text-muted-foreground">
-        Chưa chọn token
+        No token selected
       </Card>
     )
   }
 
-  // Hàm rút gọn địa chỉ
+  // Function to shorten address
   const shortenAddress = (address: string) => {
     if (!address || address === 'SOL') return address
     return `${address.slice(0, 6)}...${address.slice(-6)}`
@@ -111,7 +111,7 @@ export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
               alt={token.symbol}
               width={48}
               height={48}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover app-logo"
             />
           ) : (
             <div className="text-white font-semibold text-lg">{token.symbol.slice(0, 2)}</div>
@@ -154,7 +154,7 @@ export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
               onClick={() => setDialogOpen(true)}
             >
               <Info className="h-4 w-4 mr-1" />
-              Chi tiết
+              Details
             </Button>
           )}
         </div>
