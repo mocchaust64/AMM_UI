@@ -18,6 +18,7 @@ import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
 import { Connection } from '@solana/web3.js'
 import { TokenService } from '@/lib/service/tokenService'
+import { handleSilentError } from '@/lib/utils/error-utils'
 
 // Interface cho token
 interface TokenInfo {
@@ -95,8 +96,8 @@ export default function AirdropPage() {
             // Tìm thông tin token từ blockchain
             const tokenInfo = await TokenService.getTokenIconAndName(token.mintAddress, connection)
             infoResults[token.mintAddress] = tokenInfo
-          } catch (_) {
-            // eslint-disable-line @typescript-eslint/no-unused-vars
+          } catch (error) {
+            handleSilentError(error, 'Lỗi xảy ra khi lấy thông tin token')
             // Lỗi xảy ra khi lấy thông tin token
           }
         }

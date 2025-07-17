@@ -3,6 +3,7 @@
  */
 import { TokenService, getDetailTokenExtensions } from './tokenService'
 import { Connection } from '@solana/web3.js'
+import { handleSilentError } from '../utils/error-utils'
 
 // Interfaces cho token trong pool
 export interface GithubTokenInfo {
@@ -69,8 +70,8 @@ export class GithubPoolService {
 
       const data = await response.json().catch(() => ({ pools: [] }))
       return data.pools || []
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      handleSilentError(error, 'Lỗi khi tải danh sách pool từ GitHub')
       // Lỗi khi tải danh sách pool từ GitHub
 
       // Thử lại nếu còn số lần thử
@@ -98,8 +99,8 @@ export class GithubPoolService {
 
       const pools = await this.getAllPools()
       return pools.find((pool: GithubPoolInfo) => pool?.poolAddress === poolAddress) || null
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      handleSilentError(error, 'Lỗi khi tải chi tiết pool từ GitHub')
       // Lỗi khi tải chi tiết pool từ GitHub
 
       // Thử lại nếu còn số lần thử
@@ -134,8 +135,8 @@ export class GithubPoolService {
     let tokenInfo
     try {
       tokenInfo = await TokenService.getTokenIconAndName(tokenMint, connection)
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      handleSilentError(error, 'Lỗi khi tải thông tin token')
       // Lỗi khi tải thông tin token
       tokenInfo = {
         name: existingTokenInfo.name || `Token ${tokenMint.slice(0, 8)}`,
@@ -148,8 +149,8 @@ export class GithubPoolService {
     let metaplexMetadata = null
     try {
       metaplexMetadata = await TokenService.getMetaplexTokenMetadata(tokenMint, connection)
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      handleSilentError(error, 'Lỗi khi lấy metadata từ Metaplex')
       // Lỗi khi lấy metadata từ Metaplex - xử lý im lặng
     }
 
@@ -157,8 +158,8 @@ export class GithubPoolService {
     let extensionInfo
     try {
       extensionInfo = await getDetailTokenExtensions(tokenMint)
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      handleSilentError(error, 'Lỗi khi tải thông tin token extension')
       // Lỗi khi tải thông tin token extension
       extensionInfo = {
         isToken2022: existingTokenInfo.isToken2022 || false,
@@ -276,8 +277,8 @@ export class GithubPoolService {
             let tokenInfo
             try {
               tokenInfo = await TokenService.getTokenIconAndName(mint, connection)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (error) {
+              handleSilentError(error, 'Lỗi khi tải thông tin token')
               // Lỗi khi tải thông tin token
               tokenInfo = {
                 name: pool.token0.name || `Token ${mint.slice(0, 8)}`,
@@ -290,8 +291,8 @@ export class GithubPoolService {
             let metaplexMetadata = null
             try {
               metaplexMetadata = await TokenService.getMetaplexTokenMetadata(mint, connection)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (error) {
+              handleSilentError(error, 'Lỗi khi lấy metadata từ Metaplex')
               // Lỗi khi lấy metadata từ Metaplex - xử lý im lặng
             }
 
@@ -299,8 +300,8 @@ export class GithubPoolService {
             let extensionInfo
             try {
               extensionInfo = await getDetailTokenExtensions(mint)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (error) {
+              handleSilentError(error, 'Lỗi khi tải thông tin token extension')
               // Lỗi khi tải thông tin token extension
               extensionInfo = {
                 isToken2022: false,
@@ -343,8 +344,8 @@ export class GithubPoolService {
             let tokenInfo
             try {
               tokenInfo = await TokenService.getTokenIconAndName(mint, connection)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (error) {
+              handleSilentError(error, 'Lỗi khi tải thông tin token')
               // Lỗi khi tải thông tin token
               tokenInfo = {
                 name: pool.token1.name || `Token ${mint.slice(0, 8)}`,
@@ -357,8 +358,8 @@ export class GithubPoolService {
             let metaplexMetadata = null
             try {
               metaplexMetadata = await TokenService.getMetaplexTokenMetadata(mint, connection)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (error) {
+              handleSilentError(error, 'Lỗi khi lấy metadata từ Metaplex')
               // Lỗi khi lấy metadata từ Metaplex - xử lý im lặng
             }
 
@@ -366,8 +367,8 @@ export class GithubPoolService {
             let extensionInfo
             try {
               extensionInfo = await getDetailTokenExtensions(mint)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (error) {
+              handleSilentError(error, 'Lỗi khi tải thông tin token extension')
               // Lỗi khi tải thông tin token extension
               extensionInfo = {
                 isToken2022: false,
@@ -405,8 +406,8 @@ export class GithubPoolService {
 
       // Chuyển map thành mảng
       return Array.from(tokenMap.values())
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      handleSilentError(error, 'Lỗi khi tải danh sách token từ pool')
       // Lỗi khi tải danh sách token từ pool
       return []
     }

@@ -10,6 +10,7 @@ import {
   getTokenMetadata,
 } from '@solana/spl-token'
 import { Metaplex } from '@metaplex-foundation/js'
+import { handleSilentError } from '../utils/error-utils'
 
 export class TokenService {
   private static tokenList: TokenInfo[] = []
@@ -33,8 +34,8 @@ export class TokenService {
           )
         : []
       this.isInitialized = true
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      handleSilentError(error, 'Lỗi khi tải danh sách token từ CDN')
       // Loại bỏ console.error
       // Fallback to common tokens on devnet
 
