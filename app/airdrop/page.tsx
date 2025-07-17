@@ -95,8 +95,7 @@ export default function AirdropPage() {
             // Tìm thông tin token từ blockchain
             const tokenInfo = await TokenService.getTokenIconAndName(token.mintAddress, connection)
             infoResults[token.mintAddress] = tokenInfo
-          } catch (_unused) {
-            // eslint-disable-line @typescript-eslint/no-unused-vars
+          } catch (_) {
             // eslint-disable-line @typescript-eslint/no-unused-vars
             // Lỗi xảy ra khi lấy thông tin token
           }
