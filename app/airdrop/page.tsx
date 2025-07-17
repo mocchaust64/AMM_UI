@@ -97,6 +97,7 @@ export default function AirdropPage() {
             infoResults[token.mintAddress] = tokenInfo
           } catch (_unused) {
             // eslint-disable-line @typescript-eslint/no-unused-vars
+            // eslint-disable-line @typescript-eslint/no-unused-vars
             // Lỗi xảy ra khi lấy thông tin token
           }
         }
