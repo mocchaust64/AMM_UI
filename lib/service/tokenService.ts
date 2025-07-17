@@ -35,7 +35,6 @@ export class TokenService {
       this.isInitialized = true
     } catch (_) {
       // eslint-disable-line @typescript-eslint/no-unused-vars
-      // eslint-disable-line @typescript-eslint/no-unused-vars
       // Loại bỏ console.error
       // Fallback to common tokens on devnet
 
@@ -48,28 +47,9 @@ export class TokenService {
           decimals: 9,
           logoURI:
             'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
-          tags: ['native'],
+          tags: ['native', 'wrapped-solana'],
         },
-        {
-          chainId: 103, // Devnet
-          address: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
-          symbol: 'USDC',
-          name: 'USD Coin (Devnet)',
-          decimals: 6,
-          logoURI:
-            'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png',
-          tags: ['stablecoin'],
-        },
-        {
-          chainId: 103, // Devnet
-          address: 'BFR68SCH16jfXkgWxaY4ZAE4y1KNUxhE9baag8YeZEBj',
-          symbol: 'USDC',
-          name: 'USD Coin (Devnet)',
-          decimals: 6,
-          logoURI:
-            'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png',
-          tags: ['stablecoin'],
-        },
+        // Thêm các token mặc định khác nếu cần
       ]
       this.isInitialized = true
     }

@@ -364,11 +364,9 @@ function isTokenWithBalance(token: unknown): token is TokenWithBalance {
     typeof token === 'object' &&
     token !== null &&
     'balance' in token &&
-    typeof isTokenWithBalance(token) &&
-    token.balance === 'number' &&
+    typeof (token as { balance: unknown }).balance === 'number' &&
     'symbol' in token &&
-    typeof isTokenWithBalance(token) &&
-    token.symbol === 'string'
+    typeof (token as { symbol: unknown }).symbol === 'string'
   )
 }
 

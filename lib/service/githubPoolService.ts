@@ -69,8 +69,7 @@ export class GithubPoolService {
 
       const data = await response.json().catch(() => ({ pools: [] }))
       return data.pools || []
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (_unused) {
       // eslint-disable-line @typescript-eslint/no-unused-vars
       // Lỗi khi tải danh sách pool từ GitHub
 
@@ -99,8 +98,7 @@ export class GithubPoolService {
 
       const pools = await this.getAllPools()
       return pools.find((pool: GithubPoolInfo) => pool?.poolAddress === poolAddress) || null
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (_unused) {
       // eslint-disable-line @typescript-eslint/no-unused-vars
       // Lỗi khi tải chi tiết pool từ GitHub
 
@@ -136,8 +134,7 @@ export class GithubPoolService {
     let tokenInfo
     try {
       tokenInfo = await TokenService.getTokenIconAndName(tokenMint, connection)
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (_unused) {
       // eslint-disable-line @typescript-eslint/no-unused-vars
       // Lỗi khi tải thông tin token
       tokenInfo = {
@@ -151,8 +148,7 @@ export class GithubPoolService {
     let metaplexMetadata = null
     try {
       metaplexMetadata = await TokenService.getMetaplexTokenMetadata(tokenMint, connection)
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (_unused) {
       // eslint-disable-line @typescript-eslint/no-unused-vars
       // Lỗi khi lấy metadata từ Metaplex - xử lý im lặng
     }
@@ -161,8 +157,7 @@ export class GithubPoolService {
     let extensionInfo
     try {
       extensionInfo = await getDetailTokenExtensions(tokenMint)
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (_unused) {
       // eslint-disable-line @typescript-eslint/no-unused-vars
       // Lỗi khi tải thông tin token extension
       extensionInfo = {
@@ -281,8 +276,7 @@ export class GithubPoolService {
             let tokenInfo
             try {
               tokenInfo = await TokenService.getTokenIconAndName(mint, connection)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (_unused) {
               // eslint-disable-line @typescript-eslint/no-unused-vars
               // Lỗi khi tải thông tin token
               tokenInfo = {
@@ -296,7 +290,7 @@ export class GithubPoolService {
             let metaplexMetadata = null
             try {
               metaplexMetadata = await TokenService.getMetaplexTokenMetadata(mint, connection)
-            } catch (_) {
+            } catch (_unused) {
               // eslint-disable-line @typescript-eslint/no-unused-vars
               // Lỗi khi lấy metadata từ Metaplex - xử lý im lặng
             }
@@ -305,8 +299,7 @@ export class GithubPoolService {
             let extensionInfo
             try {
               extensionInfo = await getDetailTokenExtensions(mint)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (_unused) {
               // eslint-disable-line @typescript-eslint/no-unused-vars
               // Lỗi khi tải thông tin token extension
               extensionInfo = {
@@ -350,8 +343,7 @@ export class GithubPoolService {
             let tokenInfo
             try {
               tokenInfo = await TokenService.getTokenIconAndName(mint, connection)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (_unused) {
               // eslint-disable-line @typescript-eslint/no-unused-vars
               // Lỗi khi tải thông tin token
               tokenInfo = {
@@ -365,8 +357,7 @@ export class GithubPoolService {
             let metaplexMetadata = null
             try {
               metaplexMetadata = await TokenService.getMetaplexTokenMetadata(mint, connection)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (_unused) {
               // eslint-disable-line @typescript-eslint/no-unused-vars
               // Lỗi khi lấy metadata từ Metaplex - xử lý im lặng
             }
@@ -375,8 +366,7 @@ export class GithubPoolService {
             let extensionInfo
             try {
               extensionInfo = await getDetailTokenExtensions(mint)
-            } catch (_) {
-              // eslint-disable-line @typescript-eslint/no-unused-vars
+            } catch (_unused) {
               // eslint-disable-line @typescript-eslint/no-unused-vars
               // Lỗi khi tải thông tin token extension
               extensionInfo = {
@@ -415,8 +405,7 @@ export class GithubPoolService {
 
       // Chuyển map thành mảng
       return Array.from(tokenMap.values())
-    } catch (_) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (_unused) {
       // eslint-disable-line @typescript-eslint/no-unused-vars
       // Lỗi khi tải danh sách token từ pool
       return []
