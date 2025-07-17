@@ -35,6 +35,7 @@ export class TokenService {
       this.isInitialized = true
     } catch (_) {
       // eslint-disable-line @typescript-eslint/no-unused-vars
+      // eslint-disable-line @typescript-eslint/no-unused-vars
       // Loại bỏ console.error
       // Fallback to common tokens on devnet
 

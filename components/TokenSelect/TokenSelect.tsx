@@ -17,9 +17,9 @@ import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
 import { getDetailTokenExtensions } from '@/lib/service/tokenService'
 import { GithubPoolService, GithubTokenInfo } from '@/lib/service/githubPoolService'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
 import { TokenData } from '@/hooks/useWalletTokens'
+import { Skeleton as _Skeleton } from '@/components/ui/skeleton'
 
 // Định nghĩa kiểu dữ liệu cho token trong context của component
 interface ExtendedTokenData extends TokenData {

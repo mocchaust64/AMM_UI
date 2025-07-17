@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -46,38 +46,40 @@ export default function AirdropPage() {
   const [signatures, setSignatures] = useState<Record<string, string>>({})
   const [tokenInfos, setTokenInfos] = useState<Record<string, TokenInfoResult>>({})
 
-  const tokens: TokenInfo[] = [
-    {
-      name: 'USDC',
-      symbol: 'USDC',
-      description: 'Standard SPL Token for Swap Trading',
-      mintAddress: 'BFR68SCH16jfXkgWxaY4ZAE4y1KNUxhE9baag8YeZEBj',
-      image:
-        'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png',
-    },
-    {
-      name: 'Wrapped SOL',
-      symbol: 'wSOL',
-      description: 'SOL is wrapped into SPL token for use in DeFi',
-      mintAddress: 'So11111111111111111111111111111111111111112',
-    },
-    {
-      name: 'Token 2022',
-      symbol: 'TK22',
-      image: '/images/10.avif',
-      description: 'New Token Standard with Advanced Solana Features',
-      mintAddress: 'EyqZRrQBwtjdvHQS5BKWKHSh9HAtFhsAXzptP8wp2949',
-    },
-    {
-      name: 'Transfer Hook Token',
-      symbol: 'HOOK',
-      image: '/images/tdh.jpg',
-      description: 'Token 2022 with Transfer Hook integration',
-      mintAddress: 'GQLRDyiqAEfBVL1LZQRvBNkN6L4b3fPynHqZtPQkV5y9',
-    },
-  ]
+  const tokens: TokenInfo[] = useMemo(
+    () => [
+      {
+        name: 'USDC',
+        symbol: 'USDC',
+        description: 'Standard SPL Token for Swap Trading',
+        mintAddress: 'BFR68SCH16jfXkgWxaY4ZAE4y1KNUxhE9baag8YeZEBj',
+        image:
+          'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png',
+      },
+      {
+        name: 'Wrapped SOL',
+        symbol: 'wSOL',
+        description: 'SOL is wrapped into SPL token for use in DeFi',
+        mintAddress: 'So11111111111111111111111111111111111111112',
+      },
+      {
+        name: 'Token 2022',
+        symbol: 'TK22',
+        image: '/images/10.avif',
+        description: 'New Token Standard with Advanced Solana Features',
+        mintAddress: 'EyqZRrQBwtjdvHQS5BKWKHSh9HAtFhsAXzptP8wp2949',
+      },
+      {
+        name: 'Transfer Hook Token',
+        symbol: 'HOOK',
+        image: '/images/tdh.jpg',
+        description: 'Token 2022 with Transfer Hook integration',
+        mintAddress: 'GQLRDyiqAEfBVL1LZQRvBNkN6L4b3fPynHqZtPQkV5y9',
+      },
+    ],
+    []
+  )
 
-  // Lấy token info từ blockchain khi component mount
   useEffect(() => {
     const fetchTokenInfo = async () => {
       const connection = new Connection(
@@ -93,7 +95,8 @@ export default function AirdropPage() {
             // Tìm thông tin token từ blockchain
             const tokenInfo = await TokenService.getTokenIconAndName(token.mintAddress, connection)
             infoResults[token.mintAddress] = tokenInfo
-          } catch (error) {
+          } catch (_) {
+            // eslint-disable-line @typescript-eslint/no-unused-vars
             // Lỗi xảy ra khi lấy thông tin token
           }
         }

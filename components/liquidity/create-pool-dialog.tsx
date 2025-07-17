@@ -354,6 +354,24 @@ function ErrorDisplay({ error, txHash }: ErrorDisplayProps) {
   )
 }
 
+interface TokenWithBalance {
+  balance: number
+  symbol: string
+}
+
+function isTokenWithBalance(token: unknown): token is TokenWithBalance {
+  return (
+    typeof token === 'object' &&
+    token !== null &&
+    'balance' in token &&
+    typeof isTokenWithBalance(token) &&
+    token.balance === 'number' &&
+    'symbol' in token &&
+    typeof isTokenWithBalance(token) &&
+    token.symbol === 'string'
+  )
+}
+
 export function CreatePoolDialog(props: CreatePoolDialogProps) {
   const { _open: open, onOpenChange } = props
   const { connected: isConnected } = useWallet()
@@ -555,7 +573,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
   }
 
   // Thêm hàm để xác thực số lượng token
-  const validateAmount = (value: string, token: any): string => {
+  const validateAmount = (value: string, token: unknown): string => {
     // Loại bỏ các ký tự không phải số
     const numericValue = value.replace(/[^0-9.]/g, '')
 
@@ -565,7 +583,7 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
     }
 
     // Kiểm tra xem có token và giá trị có vượt quá số dư không
-    if (token && parseFloat(numericValue) > token.balance) {
+    if (isTokenWithBalance(token) && parseFloat(numericValue) > token.balance) {
       toast.warning(`Amount exceeds your ${token.symbol} balance`)
       return token.balance.toString()
     }
