@@ -315,7 +315,7 @@ export function SwapInterface({
   onSelectPool,
 }: SwapInterfaceProps) {
   const { t } = useLanguage()
-  const { tokens, loading: loadingTokens, refreshTokens } = useWalletTokens()
+  const { tokens, loading: _loadingTokens, refreshTokens } = useWalletTokens()
 
   const wallet = useWallet()
   const { provider, program } = useAnchorProvider()
@@ -424,8 +424,33 @@ export function SwapInterface({
   // Kiểm tra xem ví đã kết nối chưa
   const isConnected = !!wallet.publicKey
 
+  // Hàm để lấy danh sách pool từ GitHub với caching
+  const getGithubPoolsWithCache = useCallback(async (): Promise<SwapGithubPool[]> => {
+    // Nếu có sẵn pools từ props, ưu tiên sử dụng chúng
+    if (availablePools && availablePools.length > 0) {
+      return availablePools
+    }
+
+    // Nếu có cache và còn hợp lệ (dưới 5 phút), sử dụng cache
+    const CACHE_TTL = 5 * 60 * 1000 // 5 phút
+    if (poolsCache && Date.now() - poolsCache.timestamp < CACHE_TTL) {
+      return poolsCache.pools
+    }
+
+    // Nếu không có cache hoặc cache hết hạn, lấy danh sách mới
+    const pools = await GithubPoolService.getAllPools()
+
+    // Lưu vào cache
+    setPoolsCache({
+      timestamp: Date.now(),
+      pools: pools || [],
+    })
+
+    return pools || []
+  }, [availablePools, poolsCache])
+
   // Hàm để lấy danh sách pool từ GitHub
-  const fetchGithubPools = async () => {
+  const fetchGithubPools = useCallback(async () => {
     setLoadingGithubPools(true)
     try {
       // Nếu đã có pools có sẵn từ props, sử dụng chúng
@@ -483,14 +508,14 @@ export function SwapInterface({
       setEnrichingPools(false)
       setLoadingGithubPools(false)
     }
-  }
+  }, [availablePools, getGithubPoolsWithCache])
 
   // Lấy danh sách pool từ GitHub khi mở dialog
   useEffect(() => {
     if (showPoolSelector && githubPools.length === 0) {
       fetchGithubPools()
     }
-  }, [showPoolSelector, githubPools.length])
+  }, [showPoolSelector, githubPools.length, fetchGithubPools])
 
   // Pre-load và làm giàu thông tin cho các pool quan trọng khi component được mount
   useEffect(() => {
@@ -528,7 +553,7 @@ export function SwapInterface({
 
       preloadPoolInfo()
     }
-  }, [availablePools])
+  }, [availablePools, enrichedPools.length])
 
   // Effect để xử lý khi initialPoolAddress thay đổi
   useEffect(() => {
@@ -587,7 +612,7 @@ export function SwapInterface({
   }
 
   // Hàm tìm pool dựa trên cặp token
-  const findPoolForTokens = async () => {
+  const findPoolForTokens = useCallback(async () => {
     if (!fromTokenMint || !toTokenMint || fromTokenMint === toTokenMint || !raydiumProgram) {
       return
     }
@@ -623,7 +648,7 @@ export function SwapInterface({
     } finally {
       setSearchingPool(false)
     }
-  }
+  }, [fromTokenMint, toTokenMint, raydiumProgram, poolFinder])
 
   // Tìm pool khi cặp token thay đổi - chỉ khi người dùng chưa chọn pool thủ công
   useEffect(() => {
@@ -643,32 +668,7 @@ export function SwapInterface({
     }
 
     findPool()
-  }, [fromTokenMint, toTokenMint, raydiumProgram, poolFinder, userSelectedPool])
-
-  // Lấy danh sách pool từ GitHub với caching
-  const getGithubPoolsWithCache = async (): Promise<SwapGithubPool[]> => {
-    // Nếu có sẵn pools từ props, ưu tiên sử dụng chúng
-    if (availablePools && availablePools.length > 0) {
-      return availablePools
-    }
-
-    // Nếu có cache và còn hợp lệ (dưới 5 phút), sử dụng cache
-    const CACHE_TTL = 5 * 60 * 1000 // 5 phút
-    if (poolsCache && Date.now() - poolsCache.timestamp < CACHE_TTL) {
-      return poolsCache.pools
-    }
-
-    // Nếu không có cache hoặc cache hết hạn, lấy danh sách mới
-    const pools = await GithubPoolService.getAllPools()
-
-    // Lưu vào cache
-    setPoolsCache({
-      timestamp: Date.now(),
-      pools: pools || [],
-    })
-
-    return pools || []
-  }
+  }, [fromTokenMint, toTokenMint, raydiumProgram, poolFinder, userSelectedPool, findPoolForTokens])
 
   // Cải thiện hàm tìm kiếm token tương thích
   useEffect(() => {
@@ -699,7 +699,7 @@ export function SwapInterface({
             }
           })
 
-          console.log(`Tìm thấy ${compatibleTokenMints.length} token tương thích từ blockchain`)
+          // Tìm thấy token tương thích từ blockchain
         } catch (error) {
           console.error('Lỗi khi tìm token tương thích từ blockchain:', error)
         }
@@ -718,7 +718,7 @@ export function SwapInterface({
             }
           })
 
-          console.log(`Tìm thấy ${compatibleTokenMints.length} token tương thích tổng cộng`)
+          // Token tương thích tổng cộng
         } catch (error) {
           console.error('Lỗi khi tìm token tương thích từ GitHub:', error)
         }
@@ -726,7 +726,7 @@ export function SwapInterface({
         // Loại bỏ các token trùng lặp
         const uniqueCompatibleTokens = [...new Set(compatibleTokenMints)]
 
-        console.log(`Sau khi loại bỏ trùng lặp: ${uniqueCompatibleTokens.length} token tương thích`)
+        // Số token tương thích sau khi loại bỏ trùng lặp
         setCompatibleTokens(uniqueCompatibleTokens)
 
         // Cảnh báo nếu không tìm thấy token tương thích
@@ -743,7 +743,7 @@ export function SwapInterface({
     }
 
     findCompatibleTokens()
-  }, [fromTokenMint, raydiumProgram])
+  }, [fromTokenMint, raydiumProgram, getGithubPoolsWithCache])
 
   // Lấy danh sách token từ GitHub
   useEffect(() => {
@@ -765,7 +765,7 @@ export function SwapInterface({
   }, [])
 
   // Lọc danh sách token tương thích từ githubTokens
-  const compatibleGithubTokens = useMemo(() => {
+  const _compatibleGithubTokens = useMemo(() => {
     if (!fromTokenMint || compatibleTokens.length === 0) return []
 
     return githubTokens.filter(token => token.mint && compatibleTokens.includes(token.mint))

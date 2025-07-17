@@ -73,14 +73,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Kiểm tra đặc biệt nếu có token là Wrapped SOL
-    const hasWrappedSol =
-      new PublicKey(token0Mint).equals(WSOL_MINT) || new PublicKey(token1Mint).equals(WSOL_MINT)
-
-    if (hasWrappedSol) {
-      console.log('Pool includes Wrapped SOL, optimizing transaction...')
-    }
-
     // Kết nối đến Solana
     const connection = new Connection(
       process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
@@ -182,23 +174,6 @@ export async function POST(request: NextRequest) {
       const token0ProgramId = token0Info.isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
       const token1ProgramId = token1Info.isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
 
-      // Ghi log thông tin các token để debug
-      console.log('Token 0 info:', {
-        mint: token0Mint,
-        isToken2022: token0Info.isToken2022,
-        hasTransferHook: token0HasHook,
-        programId: token0ProgramId.toString(),
-        extensions: token0Info.extensions || [],
-      })
-
-      console.log('Token 1 info:', {
-        mint: token1Mint,
-        isToken2022: token1Info.isToken2022,
-        hasTransferHook: token1HasHook,
-        programId: token1ProgramId.toString(),
-        extensions: token1Info.extensions || [],
-      })
-
       // Tạo danh sách remainingAccounts ĐÚNG THỨ TỰ theo auto-whitelist-hook-pool-test.ts
 
       // Chỉ thêm tài khoản transfer hook cho token0 nếu nó có transfer hook
@@ -219,12 +194,6 @@ export async function POST(request: NextRequest) {
           { pubkey: extraAccountMetaListPDA_token0, isWritable: false, isSigner: false },
           { pubkey: whitelistPDA_token0, isWritable: true, isSigner: false }
         )
-
-        console.log('Added transfer hook accounts for token0:', {
-          hookProgram: TRANSFER_HOOK_PROGRAM_ID.toString(),
-          extraAccountMetaList: extraAccountMetaListPDA_token0.toString(),
-          whitelist: whitelistPDA_token0.toString(),
-        })
       }
 
       // Chỉ thêm tài khoản transfer hook cho token1 nếu nó có transfer hook
@@ -245,25 +214,12 @@ export async function POST(request: NextRequest) {
           { pubkey: extraAccountMetaListPDA_token1, isWritable: false, isSigner: false },
           { pubkey: whitelistPDA_token1, isWritable: true, isSigner: false }
         )
-
-        console.log('Added transfer hook accounts for token1:', {
-          hookProgram: TRANSFER_HOOK_PROGRAM_ID.toString(),
-          extraAccountMetaList: extraAccountMetaListPDA_token1.toString(),
-          whitelist: whitelistPDA_token1.toString(),
-        })
       }
 
       // QUAN TRỌNG: Wallet phải được thêm vào cuối cùng
       remainingAccounts.push(
         // Wallet với quyền ký - phải ở cuối cùng sau các tài khoản khác
         { pubkey: new PublicKey(creatorPublicKey), isWritable: true, isSigner: true }
-      )
-
-      console.log(
-        'Total remaining accounts:',
-        remainingAccounts.length,
-        'Creator wallet:',
-        creatorPublicKey
       )
 
       // Tạo LP token address

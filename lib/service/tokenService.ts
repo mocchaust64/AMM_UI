@@ -33,8 +33,9 @@ export class TokenService {
           )
         : []
       this.isInitialized = true
-    } catch (error) {
-      console.error('Failed to initialize TokenService:', error)
+    } catch (_) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
+      // Loại bỏ console.error
       // Fallback to common tokens on devnet
 
       this.tokenList = [
@@ -112,8 +113,8 @@ export class TokenService {
 
         return syntheticTokenInfo
       }
-    } catch (error) {
-      console.log('Error fetching Metaplex token info:', error)
+    } catch {
+      // Loại bỏ console.log và biến error không sử dụng
     }
 
     // Không tìm thấy thông tin
@@ -168,8 +169,9 @@ export class TokenService {
           mintInfo = await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
           isToken2022 = false
           validToken = true
-        } catch (error) {
-          console.log('Not a standard SPL token, trying Token-2022 program')
+        } catch {
+          // Loại bỏ biến error không sử dụng và console.log
+          // Not a standard SPL token, trying Token-2022 program
         }
 
         // Nếu không phải SPL token, thử với TOKEN_2022_PROGRAM_ID
@@ -178,8 +180,9 @@ export class TokenService {
             mintInfo = await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
             isToken2022 = true
             validToken = true
-          } catch (error) {
-            console.log('Not a Token-2022 token either, using default values')
+          } catch {
+            // Loại bỏ biến error không sử dụng và console.log
+            // Not a Token-2022 token either, using default values
           }
         }
 
@@ -202,8 +205,8 @@ export class TokenService {
               icon: metaplexInfo.image || '/placeholder-logo.svg',
             }
           }
-        } catch (error) {
-          console.log('Error fetching Metaplex metadata:', error)
+        } catch {
+          // Loại bỏ biến error không sử dụng và console.log
         }
 
         // Nếu không lấy được qua Metaplex, thử phương pháp spl-token tiêu chuẩn
@@ -215,8 +218,8 @@ export class TokenService {
             undefined,
             isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
           )
-        } catch (error) {
-          console.log('Error fetching token metadata:', error)
+        } catch {
+          // Loại bỏ biến error không sử dụng và console.log
         }
 
         if (tokenMetadata) {
@@ -236,8 +239,8 @@ export class TokenService {
                 metadataSymbol = metadataJson.symbol || metadataSymbol
                 metadataImage = metadataJson.image || metadataImage
               }
-            } catch (error) {
-              console.log(`Error fetching metadata from URI:`, error)
+            } catch {
+              // Loại bỏ biến error không sử dụng và console.log
             }
           }
 
@@ -256,8 +259,8 @@ export class TokenService {
             icon: '/placeholder-logo.svg',
           }
         }
-      } catch (error) {
-        console.log('Error in getTokenIconAndName:', error)
+      } catch {
+        // Loại bỏ biến error không sử dụng và console.log
       }
     }
 
@@ -276,127 +279,120 @@ export class TokenService {
    * @returns Thông tin metadata của token
    */
   static async getMetaplexTokenMetadata(tokenAddress: string, connection: Connection) {
+    const mintPublicKey = new PublicKey(tokenAddress)
+
+    // Kiểm tra loại token trước (SPL Token hoặc Token-2022)
+    let isToken2022 = false
+
     try {
-      const mintPublicKey = new PublicKey(tokenAddress)
-
-      // Kiểm tra loại token trước (SPL Token hoặc Token-2022)
-      let isToken2022 = false
-
+      // Thử lấy thông tin với TOKEN_PROGRAM_ID (SPL Token)
+      await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
+    } catch {
+      // Nếu lỗi, thử với TOKEN_2022_PROGRAM_ID
       try {
-        // Thử lấy thông tin với TOKEN_PROGRAM_ID (SPL Token)
-        await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
-      } catch (error) {
-        // Nếu lỗi, thử với TOKEN_2022_PROGRAM_ID
-        try {
-          await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
-          isToken2022 = true
-        } catch (e) {
-          // Không phải token hợp lệ
-          throw new Error('Invalid token')
-        }
+        await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
+        isToken2022 = true
+      } catch {
+        // Không phải token hợp lệ
+        throw new Error('Invalid token')
       }
+    }
 
-      // Khởi tạo Metaplex instance
-      const metaplex = Metaplex.make(connection)
+    // Khởi tạo Metaplex instance
+    const metaplex = Metaplex.make(connection)
 
-      // Với token-2022, thử lấy metadata từ on-chain trước tiên
-      if (isToken2022) {
-        try {
-          // Lấy metadata từ token program
-          const tokenMetadata = await getTokenMetadata(
-            connection,
-            mintPublicKey,
-            undefined,
-            TOKEN_2022_PROGRAM_ID
-          )
+    // Với token-2022, thử lấy metadata từ on-chain trước tiên
+    if (isToken2022) {
+      try {
+        // Lấy metadata từ token program
+        const tokenMetadata = await getTokenMetadata(
+          connection,
+          mintPublicKey,
+          undefined,
+          TOKEN_2022_PROGRAM_ID
+        )
 
-          if (tokenMetadata) {
-            const metadata = {
-              name:
-                tokenMetadata.name ||
-                `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
-              symbol: tokenMetadata.symbol || tokenAddress.slice(0, 4).toUpperCase(),
-              uri: tokenMetadata.uri || '',
-              image: null as string | null,
-              description: null as string | null,
-            }
+        if (tokenMetadata) {
+          const metadata = {
+            name:
+              tokenMetadata.name || `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
+            symbol: tokenMetadata.symbol || tokenAddress.slice(0, 4).toUpperCase(),
+            uri: tokenMetadata.uri || '',
+            image: null as string | null,
+            description: null as string | null,
+          }
 
-            // Nếu có URI, tải thêm thông tin
-            if (tokenMetadata.uri) {
-              try {
-                const response = await fetch(tokenMetadata.uri)
-                if (response.ok) {
-                  const metadataJson = await response.json()
-                  metadata.image = metadataJson.image || null
-                  metadata.description = metadataJson.description || null
-                }
-              } catch (error) {
-                console.log('Không thể lấy JSON metadata từ URI:', error)
+          // Nếu có URI, tải thêm thông tin
+          if (tokenMetadata.uri) {
+            try {
+              const response = await fetch(tokenMetadata.uri)
+              if (response.ok) {
+                const metadataJson = await response.json()
+                metadata.image = metadataJson.image || null
+                metadata.description = metadataJson.description || null
               }
+            } catch {
+              // Loại bỏ biến error không sử dụng và console.log
             }
-
-            return metadata
           }
-        } catch (error) {
-          console.log('Error fetching Token-2022 metadata:', error)
+
+          return metadata
+        }
+      } catch {
+        // Loại bỏ biến error không sử dụng và console.log
+      }
+    }
+
+    // Đối với SPL token hoặc nếu không lấy được metadata từ token-2022
+    // Thử sử dụng Metaplex, bọc trong try-catch để tránh lỗi AccountNotFoundError
+    try {
+      const nft = await metaplex.nfts().findByMint({ mintAddress: mintPublicKey })
+
+      // Tạo object chứa metadata
+      const metadata = {
+        name: nft.name,
+        symbol: nft.symbol,
+        uri: nft.uri,
+        image: null as string | null,
+        description: null as string | null,
+      }
+
+      // Nếu có JSON metadata, lấy thêm thông tin
+      if (nft.json) {
+        metadata.image = nft.json.image || null
+        metadata.description = nft.json.description || null
+      } else if (nft.uri) {
+        // Nếu không có sẵn JSON nhưng có URI, tải metadata từ URI
+        try {
+          const response = await fetch(nft.uri)
+          if (response.ok) {
+            const metadataJson = await response.json()
+            metadata.image = metadataJson.image || null
+            metadata.description = metadataJson.description || null
+          }
+        } catch {
+          // Loại bỏ biến error không sử dụng và console.log
         }
       }
 
-      // Đối với SPL token hoặc nếu không lấy được metadata từ token-2022
-      // Thử sử dụng Metaplex, bọc trong try-catch để tránh lỗi AccountNotFoundError
-      try {
-        const nft = await metaplex.nfts().findByMint({ mintAddress: mintPublicKey })
-
-        // Tạo object chứa metadata
-        const metadata = {
-          name: nft.name,
-          symbol: nft.symbol,
-          uri: nft.uri,
-          image: null as string | null,
-          description: null as string | null,
-        }
-
-        // Nếu có JSON metadata, lấy thêm thông tin
-        if (nft.json) {
-          metadata.image = nft.json.image || null
-          metadata.description = nft.json.description || null
-        } else if (nft.uri) {
-          // Nếu không có sẵn JSON nhưng có URI, tải metadata từ URI
-          try {
-            const response = await fetch(nft.uri)
-            if (response.ok) {
-              const metadataJson = await response.json()
-              metadata.image = metadataJson.image || null
-              metadata.description = metadataJson.description || null
-            }
-          } catch (error) {
-            console.log('Không thể lấy JSON metadata từ URI:', error)
-          }
-        }
-
-        return metadata
-      } catch (error) {
-        // Xử lý khi không tìm thấy metadata
-        if (
-          error instanceof Error &&
-          error.message &&
-          error.message.includes('AccountNotFoundError')
-        ) {
-          console.log('Metadata không tìm thấy cho token:', tokenAddress)
-
-          // Trả về thông tin mặc định
-          return {
-            name: `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
-            symbol: tokenAddress.slice(0, 4).toUpperCase(),
-            uri: '',
-            image: null,
-            description: null,
-          }
-        }
-        throw error
-      }
+      return metadata
     } catch (error) {
-      console.error('Lỗi khi lấy thông tin với Metaplex SDK:', error)
+      // Xử lý khi không tìm thấy metadata
+      if (
+        error instanceof Error &&
+        error.message &&
+        error.message.includes('AccountNotFoundError')
+      ) {
+        // Loại bỏ console.log
+        // Trả về thông tin mặc định
+        return {
+          name: `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
+          symbol: tokenAddress.slice(0, 4).toUpperCase(),
+          uri: '',
+          image: null,
+          description: null,
+        }
+      }
       throw error
     }
   }
@@ -424,8 +420,7 @@ export async function getDetailTokenExtensions(mintAddress: string) {
         extensions: [],
         transferHook: null,
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_) {
+    } catch {
       // Nếu lỗi, có thể là token-2022 hoặc địa chỉ không hợp lệ
       // Tiếp tục thử với TOKEN_2022_PROGRAM_ID
     }
@@ -467,16 +462,13 @@ export async function getDetailTokenExtensions(mintAddress: string) {
       extensions: extensionTypes.map(type => ExtensionType[type]),
       transferHook: null,
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (_) {
-    console.error('Error fetching token extensions:', _)
-
-    // Trả về không có extensions khi gặp lỗi
+  } catch (err) {
+    // Sửa biến unused và bỏ console.error
     return {
       isToken2022: false,
       extensions: [],
       transferHook: null,
-      error: _ instanceof Error ? _.message : 'Unknown error',
+      error: err instanceof Error ? err.message : 'Unknown error',
     }
   }
 }

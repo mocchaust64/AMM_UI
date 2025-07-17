@@ -18,7 +18,7 @@ export interface GithubTokenInfo {
   uri?: string
   externalUrl?: string
   supply?: string
-  metadata?: any // Metadata có thể được lưu trữ để sử dụng sau này
+  metadata?: Record<string, unknown> // Metadata có thể được lưu trữ để sử dụng sau này
 }
 
 // Interface cho pool từ GitHub
@@ -69,8 +69,9 @@ export class GithubPoolService {
 
       const data = await response.json().catch(() => ({ pools: [] }))
       return data.pools || []
-    } catch (error: unknown) {
-      console.error('Error fetching pools from GitHub:', error)
+    } catch (_) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
+      // Lỗi khi tải danh sách pool từ GitHub
 
       // Thử lại nếu còn số lần thử
       if (retryCount > 0) {
@@ -97,8 +98,9 @@ export class GithubPoolService {
 
       const pools = await this.getAllPools()
       return pools.find((pool: GithubPoolInfo) => pool?.poolAddress === poolAddress) || null
-    } catch (error) {
-      console.error(`Error fetching pool details for ${poolAddress}:`, error)
+    } catch (_) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
+      // Lỗi khi tải chi tiết pool từ GitHub
 
       // Thử lại nếu còn số lần thử
       if (retryCount > 0) {
@@ -132,8 +134,9 @@ export class GithubPoolService {
     let tokenInfo
     try {
       tokenInfo = await TokenService.getTokenIconAndName(tokenMint, connection)
-    } catch (error) {
-      console.error(`Error fetching token info for ${tokenMint}:`, error)
+    } catch (_) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
+      // Lỗi khi tải thông tin token
       tokenInfo = {
         name: existingTokenInfo.name || `Token ${tokenMint.slice(0, 8)}`,
         symbol: existingTokenInfo.symbol || `Token-${tokenMint.slice(0, 4)}`,
@@ -141,20 +144,22 @@ export class GithubPoolService {
       }
     }
 
-    // Thử lấy thêm thông tin metadata từ Metaplex
+    // Thử lấy thông tin metadata từ Metaplex
     let metaplexMetadata = null
     try {
       metaplexMetadata = await TokenService.getMetaplexTokenMetadata(tokenMint, connection)
-    } catch (error) {
-      console.log(`Error fetching Metaplex metadata for ${tokenMint}:`, error)
+    } catch (_) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
+      // Lỗi khi lấy metadata từ Metaplex - xử lý im lặng
     }
 
     // Lấy thông tin về token extensions
     let extensionInfo
     try {
       extensionInfo = await getDetailTokenExtensions(tokenMint)
-    } catch (error) {
-      console.error(`Error fetching token extensions for ${tokenMint}:`, error)
+    } catch (_) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
+      // Lỗi khi tải thông tin token extension
       extensionInfo = {
         isToken2022: existingTokenInfo.isToken2022 || false,
         transferHook: existingTokenInfo.hasTransferHook ? {} : null,
@@ -271,8 +276,9 @@ export class GithubPoolService {
             let tokenInfo
             try {
               tokenInfo = await TokenService.getTokenIconAndName(mint, connection)
-            } catch (error) {
-              console.error(`Error fetching token info for ${mint}:`, error)
+            } catch (_) {
+              // eslint-disable-line @typescript-eslint/no-unused-vars
+              // Lỗi khi tải thông tin token
               tokenInfo = {
                 name: pool.token0.name || `Token ${mint.slice(0, 8)}`,
                 symbol: pool.token0.symbol || `Token-${mint.slice(0, 4)}`,
@@ -284,16 +290,18 @@ export class GithubPoolService {
             let metaplexMetadata = null
             try {
               metaplexMetadata = await TokenService.getMetaplexTokenMetadata(mint, connection)
-            } catch (error) {
-              console.log(`Error fetching Metaplex metadata for ${mint}:`, error)
+            } catch (_) {
+              // eslint-disable-line @typescript-eslint/no-unused-vars
+              // Lỗi khi lấy metadata từ Metaplex - xử lý im lặng
             }
 
             // Lấy thông tin về token extension
             let extensionInfo
             try {
               extensionInfo = await getDetailTokenExtensions(mint)
-            } catch (error) {
-              console.error(`Error fetching token extensions for ${mint}:`, error)
+            } catch (_) {
+              // eslint-disable-line @typescript-eslint/no-unused-vars
+              // Lỗi khi tải thông tin token extension
               extensionInfo = {
                 isToken2022: false,
                 transferHook: null,
@@ -335,8 +343,9 @@ export class GithubPoolService {
             let tokenInfo
             try {
               tokenInfo = await TokenService.getTokenIconAndName(mint, connection)
-            } catch (error) {
-              console.error(`Error fetching token info for ${mint}:`, error)
+            } catch (_) {
+              // eslint-disable-line @typescript-eslint/no-unused-vars
+              // Lỗi khi tải thông tin token
               tokenInfo = {
                 name: pool.token1.name || `Token ${mint.slice(0, 8)}`,
                 symbol: pool.token1.symbol || `Token-${mint.slice(0, 4)}`,
@@ -348,16 +357,18 @@ export class GithubPoolService {
             let metaplexMetadata = null
             try {
               metaplexMetadata = await TokenService.getMetaplexTokenMetadata(mint, connection)
-            } catch (error) {
-              console.log(`Error fetching Metaplex metadata for ${mint}:`, error)
+            } catch (_) {
+              // eslint-disable-line @typescript-eslint/no-unused-vars
+              // Lỗi khi lấy metadata từ Metaplex - xử lý im lặng
             }
 
             // Lấy thông tin về token extension
             let extensionInfo
             try {
               extensionInfo = await getDetailTokenExtensions(mint)
-            } catch (error) {
-              console.error(`Error fetching token extensions for ${mint}:`, error)
+            } catch (_) {
+              // eslint-disable-line @typescript-eslint/no-unused-vars
+              // Lỗi khi tải thông tin token extension
               extensionInfo = {
                 isToken2022: false,
                 transferHook: null,
@@ -394,8 +405,9 @@ export class GithubPoolService {
 
       // Chuyển map thành mảng
       return Array.from(tokenMap.values())
-    } catch (error) {
-      console.error('Error fetching pool tokens:', error)
+    } catch (_) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
+      // Lỗi khi tải danh sách token từ pool
       return []
     }
   }
