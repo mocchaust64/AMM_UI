@@ -20,7 +20,6 @@ import {
   createTransferInstruction as createTransferInstruction2022,
   createTransferCheckedWithTransferHookInstruction,
 } from '@solana/spl-token'
-import bs58 from 'bs58'
 import * as anchor from '@coral-xyz/anchor'
 import transferHookIdl from '@/idl/transfer_hook.json'
 import { SystemProgram } from '@solana/web3.js'
@@ -50,18 +49,13 @@ const AIRDROP_AMOUNTS = {
 
 // Lấy keypair từ private key được lưu trong env
 function getAdminKeypair(): Keypair {
-  try {
-    // Lấy private key từ env và chuyển đổi thành uint8array
-    const privateKeyString = process.env.ADMIN_PRIVATE_KEY || ''
-    const privateKeyArray = JSON.parse(privateKeyString)
-    const privateKeyUint8 = new Uint8Array(privateKeyArray)
+  // Lấy private key từ env và chuyển đổi thành uint8array
+  const privateKeyString = process.env.ADMIN_PRIVATE_KEY || ''
+  const privateKeyArray = JSON.parse(privateKeyString)
+  const privateKeyUint8 = new Uint8Array(privateKeyArray)
 
-    // Tạo keypair từ private key
-    return Keypair.fromSecretKey(privateKeyUint8)
-  } catch (error) {
-    console.error('Lỗi khi tạo admin keypair:', error)
-    throw new Error('Lỗi cấu hình private key của admin')
-  }
+  // Tạo keypair từ private key
+  return Keypair.fromSecretKey(privateKeyUint8)
 }
 
 // Hàm để airdrop token SPL
@@ -73,62 +67,57 @@ async function airdropSPLToken(
   amount: number,
   decimals: number = 6 // mặc định là 6 cho USDC
 ): Promise<string> {
-  try {
-    // Lấy địa chỉ token account của admin
-    const adminTokenAccount = await getAssociatedTokenAddress(
-      mintAddress,
-      adminKeypair.publicKey,
-      false,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    )
+  // Lấy địa chỉ token account của admin
+  const adminTokenAccount = await getAssociatedTokenAddress(
+    mintAddress,
+    adminKeypair.publicKey,
+    false,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  )
 
-    // Lấy địa chỉ token account của người nhận
-    const receiverTokenAccount = await getAssociatedTokenAddress(
-      mintAddress,
-      receiverAddress,
-      false,
-      TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    )
+  // Lấy địa chỉ token account của người nhận
+  const receiverTokenAccount = await getAssociatedTokenAddress(
+    mintAddress,
+    receiverAddress,
+    false,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  )
 
-    // Tạo transaction
-    const transaction = new Transaction()
+  // Tạo transaction
+  const transaction = new Transaction()
 
-    // Kiểm tra xem token account của người nhận đã tồn tại chưa
-    const receiverTokenAccountInfo = await connection.getAccountInfo(receiverTokenAccount)
-    if (!receiverTokenAccountInfo) {
-      // Nếu chưa tồn tại, thêm instruction để tạo token account
-      transaction.add(
-        createAssociatedTokenAccountInstruction(
-          adminKeypair.publicKey, // Payer
-          receiverTokenAccount, // Associated token account address
-          receiverAddress, // Owner of token account
-          mintAddress, // Token mint
-          TOKEN_PROGRAM_ID,
-          ASSOCIATED_TOKEN_PROGRAM_ID
-        )
-      )
-    }
-
-    // Thêm instruction để chuyển token
+  // Kiểm tra xem token account của người nhận đã tồn tại chưa
+  const receiverTokenAccountInfo = await connection.getAccountInfo(receiverTokenAccount)
+  if (!receiverTokenAccountInfo) {
+    // Nếu chưa tồn tại, thêm instruction để tạo token account
     transaction.add(
-      createTransferInstruction(
-        adminTokenAccount, // Source
-        receiverTokenAccount, // Destination
-        adminKeypair.publicKey, // Authority (owner of source)
-        amount * 10 ** decimals // Amount, nhân với 10^decimals để đúng format
+      createAssociatedTokenAccountInstruction(
+        adminKeypair.publicKey, // Payer
+        receiverTokenAccount, // Associated token account address
+        receiverAddress, // Owner of token account
+        mintAddress, // Token mint
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       )
     )
-
-    // Gửi và xác nhận transaction
-    const signature = await sendAndConfirmTransaction(connection, transaction, [adminKeypair])
-
-    return signature
-  } catch (error) {
-    console.error('Lỗi khi airdrop SPL token:', error)
-    throw error
   }
+
+  // Thêm instruction để chuyển token
+  transaction.add(
+    createTransferInstruction(
+      adminTokenAccount, // Source
+      receiverTokenAccount, // Destination
+      adminKeypair.publicKey, // Authority (owner of source)
+      amount * 10 ** decimals // Amount, nhân với 10^decimals để đúng format
+    )
+  )
+
+  // Gửi và xác nhận transaction
+  const signature = await sendAndConfirmTransaction(connection, transaction, [adminKeypair])
+
+  return signature
 }
 
 // Hàm để airdrop token Token-2022
@@ -140,64 +129,59 @@ async function airdropToken2022(
   amount: number,
   decimals: number = 6 // mặc định là 6
 ): Promise<string> {
-  try {
-    // Lấy địa chỉ token account của admin cho Token-2022
-    const adminTokenAccount = await getAssociatedTokenAddress2022(
-      mintAddress,
-      adminKeypair.publicKey,
-      false,
-      TOKEN_2022_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    )
+  // Lấy địa chỉ token account của admin cho Token-2022
+  const adminTokenAccount = await getAssociatedTokenAddress2022(
+    mintAddress,
+    adminKeypair.publicKey,
+    false,
+    TOKEN_2022_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  )
 
-    // Lấy địa chỉ token account của người nhận cho Token-2022
-    const receiverTokenAccount = await getAssociatedTokenAddress2022(
-      mintAddress,
-      receiverAddress,
-      false,
-      TOKEN_2022_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    )
+  // Lấy địa chỉ token account của người nhận cho Token-2022
+  const receiverTokenAccount = await getAssociatedTokenAddress2022(
+    mintAddress,
+    receiverAddress,
+    false,
+    TOKEN_2022_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  )
 
-    // Tạo transaction
-    const transaction = new Transaction()
+  // Tạo transaction
+  const transaction = new Transaction()
 
-    // Kiểm tra xem token account của người nhận đã tồn tại chưa
-    const receiverTokenAccountInfo = await connection.getAccountInfo(receiverTokenAccount)
-    if (!receiverTokenAccountInfo) {
-      // Nếu chưa tồn tại, thêm instruction để tạo token account
-      transaction.add(
-        createAssociatedTokenAccountInstruction2022(
-          adminKeypair.publicKey, // Payer
-          receiverTokenAccount, // Associated token account address
-          receiverAddress, // Owner of token account
-          mintAddress, // Token mint
-          TOKEN_2022_PROGRAM_ID,
-          ASSOCIATED_TOKEN_PROGRAM_ID
-        )
-      )
-    }
-
-    // Thêm instruction để chuyển token
+  // Kiểm tra xem token account của người nhận đã tồn tại chưa
+  const receiverTokenAccountInfo = await connection.getAccountInfo(receiverTokenAccount)
+  if (!receiverTokenAccountInfo) {
+    // Nếu chưa tồn tại, thêm instruction để tạo token account
     transaction.add(
-      createTransferInstruction2022(
-        adminTokenAccount, // Source
-        receiverTokenAccount, // Destination
-        adminKeypair.publicKey, // Authority (owner of source)
-        amount * 10 ** decimals, // Amount, nhân với 10^decimals để đúng format
-        [], // Multigsignature signers (không có)
-        TOKEN_2022_PROGRAM_ID // Program ID của Token-2022
+      createAssociatedTokenAccountInstruction2022(
+        adminKeypair.publicKey, // Payer
+        receiverTokenAccount, // Associated token account address
+        receiverAddress, // Owner of token account
+        mintAddress, // Token mint
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       )
     )
-
-    // Gửi và xác nhận transaction
-    const signature = await sendAndConfirmTransaction(connection, transaction, [adminKeypair])
-
-    return signature
-  } catch (error) {
-    console.error('Lỗi khi airdrop Token-2022:', error)
-    throw error
   }
+
+  // Thêm instruction để chuyển token
+  transaction.add(
+    createTransferInstruction2022(
+      adminTokenAccount, // Source
+      receiverTokenAccount, // Destination
+      adminKeypair.publicKey, // Authority (owner of source)
+      amount * 10 ** decimals, // Amount, nhân với 10^decimals để đúng format
+      [], // Multigsignature signers (không có)
+      TOKEN_2022_PROGRAM_ID // Program ID của Token-2022
+    )
+  )
+
+  // Gửi và xác nhận transaction
+  const signature = await sendAndConfirmTransaction(connection, transaction, [adminKeypair])
+
+  return signature
 }
 
 // Hàm để airdrop Transfer Hook Token
@@ -209,191 +193,155 @@ async function airdropTransferHookToken(
   amount: number,
   decimals: number = 9
 ): Promise<string> {
-  try {
-    console.log('Bắt đầu airdrop Transfer Hook Token...')
-    console.log('Receiver address:', receiverAddress.toString())
+  // Lấy địa chỉ token account của admin cho Token-2022
+  const adminTokenAccount = await getAssociatedTokenAddress2022(
+    mintAddress,
+    adminKeypair.publicKey,
+    false,
+    TOKEN_2022_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  )
 
-    // Lấy địa chỉ token account của admin cho Token-2022
-    const adminTokenAccount = await getAssociatedTokenAddress2022(
-      mintAddress,
-      adminKeypair.publicKey,
-      false,
-      TOKEN_2022_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    )
-    console.log('Admin token account:', adminTokenAccount.toString())
+  // Lấy địa chỉ token account của người nhận cho Token-2022
+  const receiverTokenAccount = await getAssociatedTokenAddress2022(
+    mintAddress,
+    receiverAddress,
+    false,
+    TOKEN_2022_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  )
 
-    // Lấy địa chỉ token account của người nhận cho Token-2022
-    const receiverTokenAccount = await getAssociatedTokenAddress2022(
-      mintAddress,
-      receiverAddress,
-      false,
-      TOKEN_2022_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID
-    )
-    console.log('Receiver token account:', receiverTokenAccount.toString())
+  // 1. Tìm whitelist PDA
+  const [whitelistPDA] = PublicKey.findProgramAddressSync(
+    [Buffer.from('white_list'), mintAddress.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID
+  )
 
-    // 1. Tìm whitelist PDA
-    const [whitelistPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from('white_list'), mintAddress.toBuffer()],
-      TRANSFER_HOOK_PROGRAM_ID
-    )
-    console.log('Whitelist PDA:', whitelistPDA.toString())
+  // 2. Tìm extraAccountMetaList PDA
+  const [extraAccountMetaListPDA] = PublicKey.findProgramAddressSync(
+    [Buffer.from('extra-account-metas'), mintAddress.toBuffer()],
+    TRANSFER_HOOK_PROGRAM_ID
+  )
 
-    // 2. Tìm extraAccountMetaList PDA
-    const [extraAccountMetaListPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from('extra-account-metas'), mintAddress.toBuffer()],
-      TRANSFER_HOOK_PROGRAM_ID
-    )
-    console.log('ExtraAccountMetaList PDA:', extraAccountMetaListPDA.toString())
-
-    // Khởi tạo wallet theo cách trong app/api/create-pool/route.ts
-    const wallet = {
-      publicKey: adminKeypair.publicKey,
-      signTransaction: async <T extends Transaction | anchor.web3.VersionedTransaction>(
-        tx: T
-      ): Promise<T> => {
+  // Khởi tạo wallet theo cách trong app/api/create-pool/route.ts
+  const wallet = {
+    publicKey: adminKeypair.publicKey,
+    signTransaction: async <T extends Transaction | anchor.web3.VersionedTransaction>(
+      tx: T
+    ): Promise<T> => {
+      if (tx instanceof Transaction) {
+        tx.partialSign(adminKeypair)
+      }
+      return tx
+    },
+    signAllTransactions: async <T extends Transaction | anchor.web3.VersionedTransaction>(
+      txs: T[]
+    ): Promise<T[]> => {
+      return txs.map(tx => {
         if (tx instanceof Transaction) {
           tx.partialSign(adminKeypair)
         }
         return tx
-      },
-      signAllTransactions: async <T extends Transaction | anchor.web3.VersionedTransaction>(
-        txs: T[]
-      ): Promise<T[]> => {
-        return txs.map(tx => {
-          if (tx instanceof Transaction) {
-            tx.partialSign(adminKeypair)
-          }
-          return tx
-        })
-      },
-    }
-
-    // Tạo provider với wallet đã khởi tạo
-    const provider = new anchor.AnchorProvider(connection, wallet, { commitment: 'confirmed' })
-
-    const program = new anchor.Program(transferHookIdl, provider)
-    console.log('Khởi tạo program thành công')
-
-    // ====================== TRANSACTION 1: KHỞI TẠO EXTRAACCOUNTMETALIST ======================
-
-    // Kiểm tra xem ExtraAccountMetaList đã tồn tại chưa
-    const extraAccountMetaListInfo = await connection.getAccountInfo(extraAccountMetaListPDA)
-
-    if (!extraAccountMetaListInfo) {
-      console.log('ExtraAccountMetaList chưa tồn tại. Đang khởi tạo...')
-
-      // Tạo transaction để khởi tạo ExtraAccountMetaList
-      const initTransaction = new Transaction()
-
-      // Thêm instruction để khởi tạo ExtraAccountMetaList
-      try {
-        const initExtraAccountMetaListInstruction = await program.methods
-          .initializeExtraAccountMetaList()
-          .accountsPartial({
-            payer: adminKeypair.publicKey,
-            extraAccountMetaList: extraAccountMetaListPDA,
-            mint: mintAddress,
-            systemProgram: SystemProgram.programId,
-            whiteList: whitelistPDA,
-          })
-          .instruction()
-
-        initTransaction.add(initExtraAccountMetaListInstruction)
-
-        // Gửi và xác nhận transaction khởi tạo
-        const initSignature = await sendAndConfirmTransaction(
-          connection,
-          initTransaction,
-          [adminKeypair],
-          { skipPreflight: true, commitment: 'confirmed' }
-        )
-
-        console.log('ExtraAccountMetaList và whitelist đã được khởi tạo:', initSignature)
-      } catch (error) {
-        console.error('Lỗi khi khởi tạo ExtraAccountMetaList:', error)
-        throw new Error('Không thể khởi tạo ExtraAccountMetaList: ' + error)
-      }
-    } else {
-      console.log('ExtraAccountMetaList đã tồn tại.')
-    }
-
-    // ====================== TRANSACTION 2: THÊM VÀO WHITELIST VÀ CHUYỂN TOKEN ======================
-
-    // Tạo transaction mới để thêm vào whitelist và chuyển token
-    const transferTransaction = new Transaction()
-
-    // Kiểm tra xem token account của người nhận đã tồn tại chưa
-    const receiverTokenAccountInfo = await connection.getAccountInfo(receiverTokenAccount)
-    if (!receiverTokenAccountInfo) {
-      console.log('Tạo token account cho người nhận...')
-      // Nếu chưa tồn tại, thêm instruction để tạo token account
-      transferTransaction.add(
-        createAssociatedTokenAccountInstruction2022(
-          adminKeypair.publicKey, // Payer
-          receiverTokenAccount, // Associated token account address
-          receiverAddress, // Owner of token account
-          mintAddress, // Token mint
-          TOKEN_2022_PROGRAM_ID,
-          ASSOCIATED_TOKEN_PROGRAM_ID
-        )
-      )
-    }
-
-    // Thêm người nhận vào whitelist
-    console.log('Thêm người nhận vào whitelist...')
-    try {
-      const addToWhitelistInstruction = await program.methods
-        .addToWhitelist()
-        .accountsPartial({
-          newAccount: receiverAddress, // Thêm owner vào whitelist
-          mint: mintAddress,
-          whiteList: whitelistPDA,
-          signer: adminKeypair.publicKey,
-        })
-        .instruction()
-
-      transferTransaction.add(addToWhitelistInstruction)
-    } catch (error) {
-      console.error('Lỗi khi thêm vào whitelist:', error)
-      throw new Error('Không thể thêm vào whitelist: ' + error)
-    }
-
-    // Thêm instruction để chuyển token với transfer hook
-    const bigIntAmount = BigInt(amount * 10 ** decimals)
-
-    console.log('Tạo transfer instruction...')
-    const transferInstruction = await createTransferCheckedWithTransferHookInstruction(
-      connection,
-      adminTokenAccount, // Source
-      mintAddress, // Mint
-      receiverTokenAccount, // Destination
-      adminKeypair.publicKey, // Authority (owner of source)
-      bigIntAmount, // Amount
-      decimals, // Decimals
-      [], // Extra signers
-      'confirmed', // Commitment
-      TOKEN_2022_PROGRAM_ID // Program ID
-    )
-
-    transferTransaction.add(transferInstruction)
-
-    console.log('Gửi transaction chuyển token...')
-    // Gửi và xác nhận transaction chuyển token
-    const transferSignature = await sendAndConfirmTransaction(
-      connection,
-      transferTransaction,
-      [adminKeypair],
-      { skipPreflight: true, commitment: 'confirmed' }
-    )
-
-    console.log('Transaction chuyển token thành công:', transferSignature)
-    return transferSignature
-  } catch (error) {
-    console.error('Lỗi khi airdrop Transfer Hook Token:', error)
-    throw error
+      })
+    },
   }
+
+  // Tạo provider với wallet đã khởi tạo
+  const provider = new anchor.AnchorProvider(connection, wallet, { commitment: 'confirmed' })
+
+  const program = new anchor.Program(transferHookIdl, provider)
+
+  // ====================== TRANSACTION 1: KHỞI TẠO EXTRAACCOUNTMETALIST ======================
+
+  // Kiểm tra xem ExtraAccountMetaList đã tồn tại chưa
+  const extraAccountMetaListInfo = await connection.getAccountInfo(extraAccountMetaListPDA)
+
+  if (!extraAccountMetaListInfo) {
+    // Tạo transaction để khởi tạo ExtraAccountMetaList
+    const initTransaction = new Transaction()
+
+    // Thêm instruction để khởi tạo ExtraAccountMetaList
+    const initExtraAccountMetaListInstruction = await program.methods
+      .initializeExtraAccountMetaList()
+      .accountsPartial({
+        payer: adminKeypair.publicKey,
+        extraAccountMetaList: extraAccountMetaListPDA,
+        mint: mintAddress,
+        systemProgram: SystemProgram.programId,
+        whiteList: whitelistPDA,
+      })
+      .instruction()
+
+    initTransaction.add(initExtraAccountMetaListInstruction)
+
+    // Gửi và xác nhận transaction khởi tạo
+    await sendAndConfirmTransaction(connection, initTransaction, [adminKeypair], {
+      skipPreflight: true,
+      commitment: 'confirmed',
+    })
+  }
+
+  // ====================== TRANSACTION 2: THÊM VÀO WHITELIST VÀ CHUYỂN TOKEN ======================
+
+  // Tạo transaction mới để thêm vào whitelist và chuyển token
+  const transferTransaction = new Transaction()
+
+  // Kiểm tra xem token account của người nhận đã tồn tại chưa
+  const receiverTokenAccountInfo = await connection.getAccountInfo(receiverTokenAccount)
+  if (!receiverTokenAccountInfo) {
+    // Nếu chưa tồn tại, thêm instruction để tạo token account
+    transferTransaction.add(
+      createAssociatedTokenAccountInstruction2022(
+        adminKeypair.publicKey, // Payer
+        receiverTokenAccount, // Associated token account address
+        receiverAddress, // Owner of token account
+        mintAddress, // Token mint
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      )
+    )
+  }
+
+  // Thêm người nhận vào whitelist
+  const addToWhitelistInstruction = await program.methods
+    .addToWhitelist()
+    .accountsPartial({
+      newAccount: receiverAddress, // Thêm owner vào whitelist
+      mint: mintAddress,
+      whiteList: whitelistPDA,
+      signer: adminKeypair.publicKey,
+    })
+    .instruction()
+
+  transferTransaction.add(addToWhitelistInstruction)
+
+  // Thêm instruction để chuyển token với transfer hook
+  const bigIntAmount = BigInt(amount * 10 ** decimals)
+
+  const transferInstruction = await createTransferCheckedWithTransferHookInstruction(
+    connection,
+    adminTokenAccount, // Source
+    mintAddress, // Mint
+    receiverTokenAccount, // Destination
+    adminKeypair.publicKey, // Authority (owner of source)
+    bigIntAmount, // Amount
+    decimals, // Decimals
+    [], // Extra signers
+    'confirmed', // Commitment
+    TOKEN_2022_PROGRAM_ID // Program ID
+  )
+
+  transferTransaction.add(transferInstruction)
+
+  // Gửi và xác nhận transaction chuyển token
+  const transferSignature = await sendAndConfirmTransaction(
+    connection,
+    transferTransaction,
+    [adminKeypair],
+    { skipPreflight: true, commitment: 'confirmed' }
+  )
+
+  return transferSignature
 }
 
 export async function POST(request: NextRequest) {
@@ -481,7 +429,6 @@ export async function POST(request: NextRequest) {
       signature: signature || undefined,
     })
   } catch (error) {
-    console.error('Airdrop error:', error)
     return NextResponse.json(
       {
         error: `Có lỗi xảy ra khi xử lý airdrop: ${error instanceof Error ? error.message : String(error)}`,

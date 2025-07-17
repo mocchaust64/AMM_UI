@@ -16,7 +16,7 @@ import Link from 'next/link'
 import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { Badge } from '@/components/ui/badge'
-import { Connection, PublicKey } from '@solana/web3.js'
+import { Connection } from '@solana/web3.js'
 import { TokenService } from '@/lib/service/tokenService'
 
 // Interface cho token
@@ -33,12 +33,18 @@ interface TokenInfo {
   }
 }
 
+interface TokenInfoResult {
+  icon?: string
+  name?: string
+  symbol?: string
+}
+
 export default function AirdropPage() {
   const { connected, publicKey } = useWallet()
 
   const [isLoading, setIsLoading] = useState<string | null>(null)
   const [signatures, setSignatures] = useState<Record<string, string>>({})
-  const [tokenInfos, setTokenInfos] = useState<Record<string, any>>({})
+  const [tokenInfos, setTokenInfos] = useState<Record<string, TokenInfoResult>>({})
 
   const tokens: TokenInfo[] = [
     {
@@ -79,27 +85,25 @@ export default function AirdropPage() {
         'confirmed'
       )
 
-      const infoResults: Record<string, any> = {}
+      const infoResults: Record<string, TokenInfoResult> = {}
 
       for (const token of tokens) {
         if (token.mintAddress) {
           try {
-            console.log(`Fetching token info for ${token.symbol} with mint ${token.mintAddress}...`)
+            // Tìm thông tin token từ blockchain
             const tokenInfo = await TokenService.getTokenIconAndName(token.mintAddress, connection)
-            console.log(`Token info found for ${token.mintAddress}:`, tokenInfo)
             infoResults[token.mintAddress] = tokenInfo
           } catch (error) {
-            console.error(`Error fetching token info for ${token.mintAddress}:`, error)
+            // Lỗi xảy ra khi lấy thông tin token
           }
         }
       }
 
-      console.log('All token infos:', infoResults)
       setTokenInfos(infoResults)
     }
 
     fetchTokenInfo()
-  }, [])
+  }, [tokens])
 
   // Lấy token info với fallback
   const getTokenInfo = (token: TokenInfo) => {
@@ -156,7 +160,6 @@ export default function AirdropPage() {
       toast.error(
         `Lỗi khi claim ${tokenSymbol}: ${error instanceof Error ? error.message : 'Unknown error'}`
       )
-      console.error(error)
     } finally {
       setIsLoading(null)
     }

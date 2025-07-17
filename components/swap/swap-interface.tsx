@@ -782,7 +782,7 @@ export function SwapInterface({
       setSearchingPool(true)
       setCurrentPool(null)
       setAmmConfigInfo(null)
-      setUserSelectedPool(true) // Đánh dấu là người dùng đã chọn pool thủ công
+      setUserSelectedPool(true)
 
       // Đặt địa chỉ pool
       setPoolAddress(pool.poolAddress)
