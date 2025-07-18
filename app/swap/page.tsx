@@ -47,7 +47,7 @@ interface DisplayToken extends TokenData {
 }
 
 export default function SwapPage() {
-  const { tokens } = useWalletTokens()
+  const { tokens, loading: _loadingTokens, refreshTokens: _refreshTokens } = useWalletTokens()
   const [fromToken, setFromToken] = useState<string>('')
   const [toToken, setToToken] = useState<string>('')
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
@@ -59,7 +59,7 @@ export default function SwapPage() {
 
   // Thêm state để lưu thông tin token từ GitHub
   const [githubTokens, setGithubTokens] = useState<GithubTokenInfo[]>([])
-  const [loadingGithubTokens, setLoadingGithubTokens] = useState<boolean>(false)
+  const [_loadingGithubTokens, setLoadingGithubTokens] = useState(false)
 
   // Lấy thời gian cập nhật token cuối cùng từ localStorage
   useEffect(() => {
@@ -248,8 +248,8 @@ export default function SwapPage() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex flex-col space-y-4">
-                      <TokenInfoDisplay token={selectedFromToken} title="Token 1" />
-                      <TokenInfoDisplay token={selectedToToken} title="Token 2" />
+                      <TokenInfoDisplay token={selectedFromToken} _title="Token 1" />
+                      <TokenInfoDisplay token={selectedToToken} _title="Token 2" />
                     </div>
                   </CardContent>
                 </Card>

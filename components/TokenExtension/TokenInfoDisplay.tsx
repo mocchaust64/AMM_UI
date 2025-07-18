@@ -32,7 +32,7 @@ interface ExtendedTokenData extends TokenData {
 
 interface TokenInfoDisplayProps {
   token?: ExtendedTokenData | null
-  title?: string
+  _title?: string
 }
 
 export function TokenIconDisplay({
@@ -59,7 +59,7 @@ export function TokenIconDisplay({
   )
 }
 
-export function TokenInfoDisplay({ token, title }: TokenInfoDisplayProps) {
+export function TokenInfoDisplay({ token, _title }: TokenInfoDisplayProps) {
   const [extensionInfo, setExtensionInfo] = useState<TokenExtensionDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

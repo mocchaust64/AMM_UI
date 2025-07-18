@@ -66,7 +66,17 @@ export function TokenSelect({
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [tokenExtensions, setTokenExtensions] = useState<Record<string, TokenExtensionDetails>>({})
-  const [tokenMetadata, setTokenMetadata] = useState<Record<string, any>>({})
+  const [tokenMetadata, setTokenMetadata] = useState<
+    Record<
+      string,
+      {
+        name?: string
+        symbol?: string
+        image?: string | null
+        [key: string]: unknown
+      }
+    >
+  >({})
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
 
   // Tải trước metadata cho tất cả token khi component mount
@@ -80,7 +90,15 @@ export function TokenSelect({
         'confirmed'
       )
 
-      const newMetadata: Record<string, any> = {}
+      const newMetadata: Record<
+        string,
+        {
+          name?: string
+          symbol?: string
+          image?: string | null
+          [key: string]: unknown
+        }
+      > = {}
       const newExtensions: Record<string, TokenExtensionDetails> = {}
 
       const promises = tokens.map(async token => {
@@ -138,7 +156,7 @@ export function TokenSelect({
     }
 
     fetchAllTokensMetadata()
-  }, [tokens])
+  }, [tokens, tokenMetadata, isLoadingMetadata])
 
   // Lấy thông tin extension cho token khi chọn
   useEffect(() => {

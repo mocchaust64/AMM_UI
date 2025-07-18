@@ -364,7 +364,7 @@ export class TokenService {
         }
 
         return metadata
-      } catch (error) {
+      } catch {
         // Không tìm thấy metadata, trả về thông tin mặc định
         return {
           name: `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
@@ -374,7 +374,7 @@ export class TokenService {
           description: null,
         }
       }
-    } catch (error) {
+    } catch {
       // Lỗi không xác định, trả về thông tin mặc định
       return {
         name: `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
