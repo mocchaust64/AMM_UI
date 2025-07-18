@@ -12,6 +12,12 @@ import {
 import { Metaplex } from '@metaplex-foundation/js'
 import { handleSilentError } from '../utils/error-utils'
 
+// Cache cho metadata của token
+const tokenMetadataCache: Record<string, any> = {}
+
+// Cache cho thông tin extensions của token
+const tokenExtensionsCache: Record<string, any> = {}
+
 export class TokenService {
   private static tokenList: TokenInfo[] = []
   private static isInitialized = false
@@ -76,6 +82,38 @@ export class TokenService {
         'confirmed'
       )
 
+      // Lấy thông tin mint từ blockchain để có decimal chính xác
+      let mintInfo
+      let decimals
+      let isToken2022 = false
+
+      // Thử lấy thông tin mint từ Token program
+      try {
+        mintInfo = await getMint(
+          connection,
+          new PublicKey(mintAddress),
+          undefined,
+          TOKEN_PROGRAM_ID
+        )
+        decimals = mintInfo.decimals
+        isToken2022 = false
+      } catch {
+        // Nếu thất bại, thử lấy từ Token-2022 program
+        try {
+          mintInfo = await getMint(
+            connection,
+            new PublicKey(mintAddress),
+            undefined,
+            TOKEN_2022_PROGRAM_ID
+          )
+          decimals = mintInfo.decimals
+          isToken2022 = true
+        } catch {
+          // Không lấy được thông tin mint, ném ra lỗi
+          throw new Error(`Cannot retrieve decimals information for token ${mintAddress}`)
+        }
+      }
+
       const metaplexInfo = await this.getMetaplexTokenMetadata(mintAddress, connection)
 
       if (metaplexInfo) {
@@ -85,7 +123,7 @@ export class TokenService {
           address: mintAddress,
           symbol: metaplexInfo.symbol || mintAddress.slice(0, 4).toUpperCase(),
           name: metaplexInfo.name || `Token ${mintAddress.slice(0, 6)}...${mintAddress.slice(-4)}`,
-          decimals: 9, // Giá trị mặc định, có thể cập nhật sau
+          decimals, // Sử dụng decimals đã lấy được từ mint
           logoURI: metaplexInfo.image || '',
           tags: [],
         }
@@ -95,8 +133,9 @@ export class TokenService {
 
         return syntheticTokenInfo
       }
-    } catch {
-      // Loại bỏ console.log và biến error không sử dụng
+    } catch (error) {
+      console.error('Error getting token info:', error)
+      throw error // Ném ra lỗi để được xử lý ở lớp cao hơn
     }
 
     // Không tìm thấy thông tin
@@ -259,6 +298,11 @@ export class TokenService {
    * @returns Thông tin metadata của token
    */
   static async getMetaplexTokenMetadata(tokenAddress: string, connection: Connection) {
+    // Kiểm tra cache trước
+    if (tokenMetadataCache[tokenAddress]) {
+      return tokenMetadataCache[tokenAddress]
+    }
+
     try {
       const mintPublicKey = new PublicKey(tokenAddress)
 
@@ -275,13 +319,15 @@ export class TokenService {
           isToken2022 = true
         } catch {
           // Không phải token hợp lệ, trả về thông tin mặc định
-          return {
+          const defaultData = {
             name: `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
             symbol: tokenAddress.slice(0, 4).toUpperCase(),
             uri: '',
             image: null,
             description: null,
           }
+          tokenMetadataCache[tokenAddress] = defaultData
+          return defaultData
         }
       }
 
@@ -324,6 +370,8 @@ export class TokenService {
               }
             }
 
+            // Lưu vào cache
+            tokenMetadataCache[tokenAddress] = metadata
             return metadata
           }
         } catch {
@@ -363,26 +411,32 @@ export class TokenService {
           }
         }
 
+        // Lưu vào cache
+        tokenMetadataCache[tokenAddress] = metadata
         return metadata
       } catch {
         // Không tìm thấy metadata, trả về thông tin mặc định
-        return {
+        const defaultData = {
           name: `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
           symbol: tokenAddress.slice(0, 4).toUpperCase(),
           uri: '',
           image: null,
           description: null,
         }
+        tokenMetadataCache[tokenAddress] = defaultData
+        return defaultData
       }
     } catch {
       // Lỗi không xác định, trả về thông tin mặc định
-      return {
+      const defaultData = {
         name: `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
         symbol: tokenAddress.slice(0, 4).toUpperCase(),
         uri: '',
         image: null,
         description: null,
       }
+      tokenMetadataCache[tokenAddress] = defaultData
+      return defaultData
     }
   }
 }
@@ -393,6 +447,11 @@ export class TokenService {
  * @returns Thông tin extensions và transferHook (nếu có)
  */
 export async function getDetailTokenExtensions(mintAddress: string) {
+  // Kiểm tra cache trước
+  if (tokenExtensionsCache[mintAddress]) {
+    return tokenExtensionsCache[mintAddress]
+  }
+
   try {
     const connection = new Connection('https://api.devnet.solana.com', 'confirmed')
     const mintPublicKey = new PublicKey(mintAddress)
@@ -404,11 +463,15 @@ export async function getDetailTokenExtensions(mintAddress: string) {
 
       // Nếu lấy được thông tin từ SPL Token program, đây là token thường
       // Trả về không có extensions
-      return {
+      const result = {
         isToken2022: false,
         extensions: [],
         transferHook: null,
       }
+
+      // Lưu vào cache
+      tokenExtensionsCache[mintAddress] = result
+      return result
     } catch {
       // Nếu lỗi, có thể là token-2022 hoặc địa chỉ không hợp lệ
       // Tiếp tục thử với TOKEN_2022_PROGRAM_ID
@@ -419,11 +482,15 @@ export async function getDetailTokenExtensions(mintAddress: string) {
 
     // Nếu lấy được thông tin, đây là token-2022
     if (!mintInfo.tlvData) {
-      return {
+      const result = {
         isToken2022: true,
         extensions: [],
         transferHook: null,
       }
+
+      // Lưu vào cache
+      tokenExtensionsCache[mintAddress] = result
+      return result
     }
 
     // Lấy danh sách extensions
@@ -434,7 +501,7 @@ export async function getDetailTokenExtensions(mintAddress: string) {
       const transferHookData = getTransferHook(mintInfo)
 
       if (transferHookData) {
-        return {
+        const result = {
           isToken2022: true,
           extensions: extensionTypes.map(type => ExtensionType[type]),
           transferHook: {
@@ -442,22 +509,34 @@ export async function getDetailTokenExtensions(mintAddress: string) {
             programId: transferHookData.programId ? transferHookData.programId.toBase58() : 'None',
           },
         }
+
+        // Lưu vào cache
+        tokenExtensionsCache[mintAddress] = result
+        return result
       }
     }
 
     // Trường hợp có extensions nhưng không có TransferHook
-    return {
+    const result = {
       isToken2022: true,
       extensions: extensionTypes.map(type => ExtensionType[type]),
       transferHook: null,
     }
+
+    // Lưu vào cache
+    tokenExtensionsCache[mintAddress] = result
+    return result
   } catch (err) {
     // Sửa biến unused và bỏ console.error
-    return {
+    const result = {
       isToken2022: false,
       extensions: [],
       transferHook: null,
       error: err instanceof Error ? err.message : 'Unknown error',
     }
+
+    // Lưu vào cache (ngay cả khi có lỗi)
+    tokenExtensionsCache[mintAddress] = result
+    return result
   }
 }

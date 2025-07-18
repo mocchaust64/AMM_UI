@@ -289,28 +289,17 @@ interface AlertInfoProps {
 }
 
 function AlertInfo({ showAlert, hasTransferHook }: AlertInfoProps) {
-  if (!showAlert) return null
+  if (!showAlert || !hasTransferHook) return null
 
   return (
     <Alert className="mt-4 bg-blue-900/20 text-blue-400 border-blue-800/50">
       <Info className="h-5 w-5" />
       <AlertTitle>Important Information</AlertTitle>
       <AlertDescription className="text-sm">
-        {hasTransferHook ? (
-          <>
-            <p className="mb-1">
-              You are creating a pool with a token that has a Transfer Hook. The vault will be
-              automatically added to the token whitelist.
-            </p>
-          </>
-        ) : (
-          <>
-            <p>
-              You can use Wrapped SOL and other token types to create a pool with customized
-              liquidity.
-            </p>
-          </>
-        )}
+        <p className="mb-1">
+          You are creating a pool with a token that has a Transfer Hook. The vault will be
+          automatically added to the token whitelist.
+        </p>
       </AlertDescription>
     </Alert>
   )
@@ -417,8 +406,16 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
   useEffect(() => {
     async function fetchTokenAInfo() {
       if (tokenAMint) {
-        const info = await getDetailTokenExtensions(tokenAMint)
-        setTokenAInfo(info)
+        try {
+          const info = await getDetailTokenExtensions(tokenAMint)
+          setTokenAInfo(info)
+        } catch (error) {
+          console.error('Error fetching token A info:', error)
+          toast.error(`Token không hợp lệ hoặc không lấy được thông tin decimal: ${tokenAMint}`)
+          // Reset lựa chọn token không hợp lệ
+          setTokenAMint('')
+          setTokenAInfo(null)
+        }
       } else {
         setTokenAInfo(null)
       }
@@ -429,8 +426,16 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
   useEffect(() => {
     async function fetchTokenBInfo() {
       if (tokenBMint) {
-        const info = await getDetailTokenExtensions(tokenBMint)
-        setTokenBInfo(info)
+        try {
+          const info = await getDetailTokenExtensions(tokenBMint)
+          setTokenBInfo(info)
+        } catch (error) {
+          console.error('Error fetching token B info:', error)
+          toast.error(`Token không hợp lệ hoặc không lấy được thông tin decimal: ${tokenBMint}`)
+          // Reset lựa chọn token không hợp lệ
+          setTokenBMint('')
+          setTokenBInfo(null)
+        }
       } else {
         setTokenBInfo(null)
       }
@@ -580,6 +585,26 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
       return ''
     }
 
+    // Lấy số lượng chữ số thập phân hiện tại
+    const parts = numericValue.split('.')
+    const hasDecimal = parts.length > 1
+    const decimalPart = hasDecimal ? parts[1] : ''
+
+    // Kiểm tra xem token có thuộc tính decimals không
+    if (!token || typeof token !== 'object' || !('decimals' in token)) {
+      // Nếu không có thông tin decimals, thông báo lỗi
+      toast.error('Không có thông tin decimals cho token này')
+      return numericValue // Vẫn trả về giá trị hiện tại
+    }
+
+    const tokenDecimals = (token as { decimals: number }).decimals
+
+    // Nếu số lượng chữ số thập phân vượt quá decimals của token, cắt bớt
+    if (hasDecimal && decimalPart.length > tokenDecimals) {
+      const truncatedValue = `${parts[0]}.${decimalPart.substring(0, tokenDecimals)}`
+      return truncatedValue
+    }
+
     // Kiểm tra xem có token và giá trị có vượt quá số dư không
     if (isTokenWithBalance(token) && parseFloat(numericValue) > token.balance) {
       toast.warning(`Amount exceeds your ${token.symbol} balance`)
@@ -587,6 +612,15 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
     }
 
     return numericValue
+  }
+
+  // Thêm hàm định dạng số lượng token theo decimal
+  const formatTokenAmount = (amount: number, _decimals: number) => {
+    // Định dạng số với dấu phẩy ngăn cách hàng nghìn và chỉ hiển thị 1 số thập phân
+    return amount.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1, // Chỉ hiển thị 1 số thập phân thay vì đầy đủ
+    })
   }
 
   const handleCreatePool = async () => {
@@ -740,7 +774,9 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="amountA">Amount A</Label>
+                  <Label htmlFor="amountA">
+                    Amount A {tokenA && `(Decimals: ${tokenA.decimals})`}
+                  </Label>
                   <div className="flex items-center space-x-2">
                     <Input
                       id="amountA"
@@ -748,17 +784,20 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                       placeholder="0.0"
                       value={amountA}
                       onChange={e => setAmountA(validateAmount(e.target.value, tokenA))}
+                      step={tokenA ? `1e-${tokenA.decimals}` : '0.000000001'}
                     />
                     {tokenA && (
                       <Badge variant="outline" className="whitespace-nowrap">
-                        Balance: {tokenA.balance.toLocaleString()}
+                        Balance: {formatTokenAmount(tokenA.balance, tokenA.decimals)}
                       </Badge>
                     )}
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="amountB">Amount B</Label>
+                  <Label htmlFor="amountB">
+                    Amount B {tokenB && `(Decimals: ${tokenB.decimals})`}
+                  </Label>
                   <div className="flex items-center space-x-2">
                     <Input
                       id="amountB"
@@ -766,10 +805,11 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                       placeholder="0.0"
                       value={amountB}
                       onChange={e => setAmountB(validateAmount(e.target.value, tokenB))}
+                      step={tokenB ? `1e-${tokenB.decimals}` : '0.000000001'}
                     />
                     {tokenB && (
                       <Badge variant="outline" className="whitespace-nowrap">
-                        Balance: {tokenB.balance.toLocaleString()}
+                        Balance: {formatTokenAmount(tokenB.balance, tokenB.decimals)}
                       </Badge>
                     )}
                   </div>
@@ -794,7 +834,9 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="customAmountA">Amount A</Label>
+                  <Label htmlFor="customAmountA">
+                    Amount A {tokenA && `(Decimals: ${tokenA.decimals})`}
+                  </Label>
                   <div className="flex items-center space-x-2">
                     <Input
                       id="customAmountA"
@@ -803,17 +845,20 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                       value={amountA}
                       onChange={e => setAmountA(validateAmount(e.target.value, tokenA))}
                       disabled={creatingPool}
+                      step={tokenA ? `1e-${tokenA.decimals}` : '0.000000001'}
                     />
                     {tokenA && (
                       <Badge variant="outline" className="whitespace-nowrap">
-                        Balance: {tokenA.balance.toLocaleString()}
+                        Balance: {formatTokenAmount(tokenA.balance, tokenA.decimals)}
                       </Badge>
                     )}
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="customAmountB">Amount B</Label>
+                  <Label htmlFor="customAmountB">
+                    Amount B {tokenB && `(Decimals: ${tokenB.decimals})`}
+                  </Label>
                   <div className="flex items-center space-x-2">
                     <Input
                       id="customAmountB"
@@ -822,10 +867,11 @@ export function CreatePoolDialog(props: CreatePoolDialogProps) {
                       value={amountB}
                       onChange={e => setAmountB(validateAmount(e.target.value, tokenB))}
                       disabled={creatingPool}
+                      step={tokenB ? `1e-${tokenB.decimals}` : '0.000000001'}
                     />
                     {tokenB && (
                       <Badge variant="outline" className="whitespace-nowrap">
-                        Balance: {tokenB.balance.toLocaleString()}
+                        Balance: {formatTokenAmount(tokenB.balance, tokenB.decimals)}
                       </Badge>
                     )}
                   </div>

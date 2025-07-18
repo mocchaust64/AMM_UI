@@ -31,7 +31,7 @@ interface GithubPoolsProps {
   onSelectPool?: (pool: GithubPool) => void
 }
 
-export function GithubPools({ itemsPerPage = 10, onSelectPool }: GithubPoolsProps) {
+export function GithubPools({ itemsPerPage = 8, onSelectPool }: GithubPoolsProps) {
   const [pools, setPools] = useState<GithubPool[]>([])
   const [enrichedPools, setEnrichedPools] = useState<GithubPool[]>([])
   const [loading, setLoading] = useState(true)
@@ -193,7 +193,7 @@ export function GithubPools({ itemsPerPage = 10, onSelectPool }: GithubPoolsProp
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-lg font-semibold">Pools on GitHub</CardTitle>
+        <CardTitle className="text-lg font-semibold">All Pools</CardTitle>
         <div className="flex items-center gap-2">
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

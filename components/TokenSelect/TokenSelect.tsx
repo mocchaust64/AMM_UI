@@ -78,11 +78,12 @@ export function TokenSelect({
     >
   >({})
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
+  const [visibleTokens, setVisibleTokens] = useState<string[]>([])
 
-  // Tải trước metadata cho tất cả token khi component mount
+  // Tải metadata chỉ cho token đang hiển thị và token được chọn
   useEffect(() => {
-    async function fetchAllTokensMetadata() {
-      if (tokens.length === 0 || isLoadingMetadata) return
+    async function fetchVisibleTokensMetadata(tokenAddresses: string[]) {
+      if (tokenAddresses.length === 0 || isLoadingMetadata) return
 
       setIsLoadingMetadata(true)
       const connection = new Connection(
@@ -101,27 +102,27 @@ export function TokenSelect({
       > = {}
       const newExtensions: Record<string, TokenExtensionDetails> = {}
 
-      const promises = tokens.map(async token => {
-        // Bỏ qua SOL native
-        if (token.mint === 'SOL') return
+      // Chỉ xử lý tối đa 5 token mỗi lần để tránh quá tải
+      const tokensToProcess = tokenAddresses.slice(0, 5)
 
-        // Nếu đã có metadata cho token này, bỏ qua
-        if (tokenMetadata[token.mint]) return
+      const promises = tokensToProcess.map(async tokenMint => {
+        // Bỏ qua SOL native và token đã có metadata
+        if (tokenMint === 'SOL' || tokenMetadata[tokenMint]) return
 
         try {
           // Lấy thông tin metadata từ TokenService
-          const metadata = await TokenService.getMetaplexTokenMetadata(token.mint, connection)
+          const metadata = await TokenService.getMetaplexTokenMetadata(tokenMint, connection)
           if (metadata) {
-            newMetadata[token.mint] = metadata
+            newMetadata[tokenMint] = metadata
           }
 
           // Lấy thông tin extension
-          const extensionInfo = await getDetailTokenExtensions(token.mint)
+          const extensionInfo = await getDetailTokenExtensions(tokenMint)
           if (extensionInfo) {
-            newExtensions[token.mint] = extensionInfo
+            newExtensions[tokenMint] = extensionInfo
           }
         } catch (error) {
-          // Xử lý im lặng lỗi AccountNotFoundError
+          // Xử lý im lặng lỗi
           if (
             !(
               error instanceof Error &&
@@ -129,7 +130,7 @@ export function TokenSelect({
               error.message.includes('AccountNotFoundError')
             )
           ) {
-            console.error(`Error fetching metadata for token ${token.mint}:`, error)
+            console.error(`Error fetching metadata for token ${tokenMint}:`, error)
           }
         }
       })
@@ -153,10 +154,36 @@ export function TokenSelect({
       }
 
       setIsLoadingMetadata(false)
+
+      // Xử lý phần còn lại nếu còn
+      const remainingTokens = tokenAddresses.slice(5)
+      if (remainingTokens.length > 0) {
+        // Đợi một chút trước khi tiếp tục xử lý batch tiếp theo
+        setTimeout(() => {
+          fetchVisibleTokensMetadata(remainingTokens)
+        }, 500)
+      }
     }
 
-    fetchAllTokensMetadata()
-  }, [tokens, tokenMetadata, isLoadingMetadata])
+    // Tạo danh sách các token cần tải metadata
+    const tokensToFetch: string[] = []
+
+    // Luôn ưu tiên token đã chọn
+    if (value && !tokenMetadata[value]) {
+      tokensToFetch.push(value)
+    }
+
+    // Thêm các token đang hiển thị
+    visibleTokens.forEach(mint => {
+      if (!tokenMetadata[mint] && mint !== 'SOL' && !tokensToFetch.includes(mint)) {
+        tokensToFetch.push(mint)
+      }
+    })
+
+    if (tokensToFetch.length > 0) {
+      fetchVisibleTokensMetadata(tokensToFetch)
+    }
+  }, [value, visibleTokens, tokenMetadata, isLoadingMetadata])
 
   // Lấy thông tin extension cho token khi chọn
   useEffect(() => {
@@ -230,6 +257,11 @@ export function TokenSelect({
         return b.balance - a.balance
       })
   }, [tokens, searchQuery, excludeToken, forPoolCreation])
+
+  // Cập nhật visibleTokens khi filtered tokens thay đổi
+  useEffect(() => {
+    setVisibleTokens(filteredTokens.map(token => token.mint))
+  }, [filteredTokens])
 
   const handleSelect = (tokenMint: string) => {
     if (onChange) {
@@ -566,7 +598,7 @@ export function PoolTokenSelect({
   disabled = false,
   compatibleTokens,
   isLoadingCompatible = false,
-  forPoolCreation = false, // Thêm tham số này
+  forPoolCreation,
 }: TokenSelectProps) {
   const { tokens, loading } = useWalletTokens({
     includeSol: true,
@@ -574,27 +606,77 @@ export function PoolTokenSelect({
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [tokenExtensions, setTokenExtensions] = useState<Record<string, TokenExtensionDetails>>({})
+  const [visibleTokens, setVisibleTokens] = useState<string[]>([])
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
 
-  // Lấy thông tin extension cho token khi chọn
+  // Lấy thông tin extension cho token đã chọn và token hiển thị
   useEffect(() => {
-    async function fetchTokenExtensions() {
-      if (!value) return
+    async function fetchTokensExtensions(tokenAddresses: string[]) {
+      if (tokenAddresses.length === 0 || isLoadingMetadata) return
 
-      try {
-        const extensionInfo = await getDetailTokenExtensions(value)
+      setIsLoadingMetadata(true)
+
+      const newExtensions: Record<string, TokenExtensionDetails> = {}
+
+      // Chỉ xử lý tối đa 5 token mỗi lần để tránh quá tải
+      const tokensToProcess = tokenAddresses.slice(0, 5)
+
+      const promises = tokensToProcess.map(async tokenMint => {
+        // Bỏ qua SOL native và token đã có metadata
+        if (tokenMint === 'SOL' || tokenExtensions[tokenMint]) return
+
+        try {
+          const extensionInfo = await getDetailTokenExtensions(tokenMint)
+          if (extensionInfo) {
+            newExtensions[tokenMint] = extensionInfo
+          }
+        } catch (error) {
+          console.error('Error fetching token extensions:', error)
+        }
+      })
+
+      // Đợi tất cả promise hoàn thành
+      await Promise.allSettled(promises)
+
+      // Cập nhật state với extensions mới
+      if (Object.keys(newExtensions).length > 0) {
         setTokenExtensions(prev => ({
           ...prev,
-          [value]: extensionInfo,
+          ...newExtensions,
         }))
-      } catch (error) {
-        console.error('Error fetching token extensions:', error)
+      }
+
+      setIsLoadingMetadata(false)
+
+      // Xử lý phần còn lại nếu còn
+      const remainingTokens = tokenAddresses.slice(5)
+      if (remainingTokens.length > 0) {
+        // Đợi một chút trước khi tiếp tục xử lý batch tiếp theo
+        setTimeout(() => {
+          fetchTokensExtensions(remainingTokens)
+        }, 500)
       }
     }
 
+    // Tạo danh sách các token cần tải metadata
+    const tokensToFetch: string[] = []
+
+    // Luôn ưu tiên token đã chọn
     if (value && !tokenExtensions[value]) {
-      fetchTokenExtensions()
+      tokensToFetch.push(value)
     }
-  }, [value, tokenExtensions])
+
+    // Thêm các token đang hiển thị
+    visibleTokens.forEach(mint => {
+      if (!tokenExtensions[mint] && mint !== 'SOL' && !tokensToFetch.includes(mint)) {
+        tokensToFetch.push(mint)
+      }
+    })
+
+    if (tokensToFetch.length > 0) {
+      fetchTokensExtensions(tokensToFetch)
+    }
+  }, [value, visibleTokens, tokenExtensions, isLoadingMetadata])
 
   const filteredTokens = useMemo(() => {
     return tokens
@@ -625,6 +707,11 @@ export function PoolTokenSelect({
       })
       .sort((a, b) => b.balance - a.balance) // Sort by balance (descending)
   }, [tokens, searchQuery, excludeToken, compatibleTokens])
+
+  // Cập nhật visibleTokens khi filtered tokens thay đổi
+  useEffect(() => {
+    setVisibleTokens(filteredTokens.map(token => token.mint))
+  }, [filteredTokens])
 
   const handleSelect = (tokenMint: string) => {
     if (onChange) {

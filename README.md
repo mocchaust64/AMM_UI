@@ -164,4 +164,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Raydium](https://raydium.io/) - AMM protocol
 - [Next.js](https://nextjs.org/) - React framework
 - [shadcn/ui](https://ui.shadcn.com/) - UI components
-- [TailwindCSS](https://tailwindcss.com/) - CSS framework
+- [TailwindCSS](https://tailwindcss.com/) - CSS framework.

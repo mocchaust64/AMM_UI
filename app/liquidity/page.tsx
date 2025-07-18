@@ -293,7 +293,7 @@ export default function LiquidityPage() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="my-pools">My Pools</TabsTrigger>
-              <TabsTrigger value="github-pools">GitHub Pools</TabsTrigger>
+              <TabsTrigger value="github-pools">All Pools</TabsTrigger>
             </TabsList>
 
             <TabsContent value="my-pools">
