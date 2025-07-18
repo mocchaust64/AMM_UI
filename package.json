@@ -9,7 +9,8 @@
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "lint:strict": "next lint --max-warnings=0",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit --skipLibCheck --project tsconfig.json",
+    "test:types": "cd test && tsc --noEmit -p tsconfig.test.json",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
     "start": "next start"
   },
