@@ -338,6 +338,8 @@ export function SwapInterface({
   const [_ammConfigInfo, setAmmConfigInfo] = useState<AmmConfigInfo | null>(null)
   // Thêm state để theo dõi xem người dùng đã chọn pool thủ công chưa
   const [userSelectedPool, setUserSelectedPool] = useState(!!initialPoolAddress)
+  // Thêm state để hiển thị lỗi swap
+  const [swapError, setSwapError] = useState('')
 
   // Thêm state để theo dõi xem người dùng đã chọn token thủ công chưa
   const [userSelectedTokens, setUserSelectedTokens] = useState({
@@ -420,9 +422,6 @@ export function SwapInterface({
   // Get selected tokens from mints
   const fromToken = tokens.find(token => token.mint === fromTokenMint)
   const toToken = tokens.find(token => token.mint === toTokenMint)
-
-  // Kiểm tra xem ví đã kết nối chưa
-  const isConnected = !!wallet.publicKey
 
   // Hàm để lấy danh sách pool từ GitHub với caching
   const getGithubPoolsWithCache = useCallback(async (): Promise<SwapGithubPool[]> => {
@@ -617,6 +616,8 @@ export function SwapInterface({
       return
     }
 
+    // Clear previous errors
+    setSwapError('')
     setSearchingPool(true)
     setCurrentPool(null)
     setAmmConfigInfo(null)
@@ -638,13 +639,13 @@ export function SwapInterface({
           setAmmConfigInfo(configInfo)
         }
       } else {
-        toast.warning(
-          'Không tìm thấy pool cho cặp token này. Vui lòng chọn pool từ GitHub hoặc nhập địa chỉ pool thủ công.'
+        setSwapError(
+          'No pool found for this token pair. Please select a pool from GitHub or enter a pool address manually.'
         )
       }
     } catch (error) {
       console.error('Lỗi khi tìm pool:', error)
-      toast.error('Không thể tìm pool tự động.')
+      setSwapError('Unable to find pool automatically.')
     } finally {
       setSearchingPool(false)
     }
@@ -774,11 +775,13 @@ export function SwapInterface({
   // Hàm để chọn pool từ GitHub
   const selectGithubPool = async (pool: SwapGithubPool) => {
     if (!pool || !pool.poolAddress) {
-      toast.error('Pool không hợp lệ')
+      setSwapError('Invalid pool')
       return
     }
 
     try {
+      // Clear previous errors
+      setSwapError('')
       setSearchingPool(true)
       setCurrentPool(null)
       setAmmConfigInfo(null)
@@ -816,6 +819,7 @@ export function SwapInterface({
         }
       } catch (error) {
         console.error('Lỗi khi tải thông tin pool từ blockchain:', error)
+        setSwapError('Unable to load pool information from blockchain')
       }
 
       // Thông báo ra ngoài về pool đã chọn
@@ -823,11 +827,11 @@ export function SwapInterface({
         onSelectPool(pool)
       }
 
-      toast.success('Đã chọn pool từ GitHub!')
+      toast.success('Pool selected from GitHub!')
       setShowPoolSelector(false)
     } catch (error) {
       console.error('Lỗi khi chọn pool:', error)
-      toast.error('Không thể chọn pool')
+      setSwapError('Unable to select pool')
     } finally {
       setSearchingPool(false)
     }
@@ -853,7 +857,24 @@ export function SwapInterface({
       })
     } catch (error) {
       console.error('Error calculating swap:', error)
-      toast.error('Không thể tính toán tỷ giá swap')
+
+      // Reset giá trị
+      setToAmount('')
+      setSwapData(null)
+
+      // Hiển thị lỗi trong form thay vì toast
+      if (error instanceof Error) {
+        if (
+          error.message.includes('Pool không đủ token') ||
+          error.message.includes('Pool không có đủ thanh khoản')
+        ) {
+          setSwapError('Insufficient liquidity in pool for this swap')
+        } else {
+          setSwapError(`Unable to calculate swap rate: ${error.message}`)
+        }
+      } else {
+        setSwapError('Unable to calculate swap rate')
+      }
     } finally {
       setCalculating(false)
     }
@@ -886,6 +907,9 @@ export function SwapInterface({
     if (fromTokenMint !== toTokenMint) {
       setUserSelectedPool(false)
     }
+
+    // Reset swap error when switching tokens
+    setSwapError('')
   }
 
   // Thêm hàm validate amount để không cho phép nhập quá số dư
@@ -901,8 +925,13 @@ export function SwapInterface({
     // Kiểm tra xem giá trị có vượt quá số dư không
     const amount = parseFloat(numericValue)
     if (amount > tokenBalance) {
-      toast.warning('Amount exceeds your token balance')
+      setSwapError(`Amount exceeds your ${fromToken?.symbol || 'token'} balance`)
       return tokenBalance.toString()
+    }
+
+    // Clear error if valid
+    if (swapError && swapError.includes('exceeds')) {
+      setSwapError('')
     }
 
     return numericValue
@@ -917,12 +946,26 @@ export function SwapInterface({
       !swapData ||
       !poolAddress
     ) {
-      toast.error('Please connect wallet, select token, and enter pool address')
+      setSwapError('Please connect wallet, select tokens, and enter pool address')
       return
     }
 
+    // Clear previous errors
+    setSwapError('')
     setSwapping(true)
     try {
+      // Kiểm tra xem pool có đủ token đầu ra không
+      if (!currentPool) {
+        throw new Error('Cannot find pool information')
+      }
+
+      const isToken0 = currentPool.token0Mint.toString() === fromToken.mint
+      const outBalance = isToken0 ? currentPool.token1Balance || 0 : currentPool.token0Balance || 0
+
+      if (outBalance < swapData.outputAmount) {
+        throw new Error(`Insufficient ${toToken.symbol} tokens in pool for this swap`)
+      }
+
       // Chuyển đổi số lượng sang BN (với decimals của token)
       const amountIn = new BN(parseFloat(fromAmount) * 10 ** fromToken.decimals)
       const minimumAmountOut = new BN(swapData.minimumReceived * 10 ** toToken.decimals)
@@ -977,9 +1020,21 @@ export function SwapInterface({
       }, 2000)
     } catch (error) {
       console.error('Swap error:', error)
-      toast.error(
-        'Cannot perform swap: ' + (error instanceof Error ? error.message : 'Unknown error')
-      )
+
+      // Xử lý các lỗi cụ thể liên quan đến thanh khoản pool
+      if (error instanceof Error) {
+        if (
+          error.message.includes('Pool không đủ token') ||
+          error.message.includes('Pool không có đủ thanh khoản') ||
+          error.message.includes('Insufficient')
+        ) {
+          setSwapError(error.message)
+        } else {
+          setSwapError(`Cannot perform swap: ${error.message}`)
+        }
+      } else {
+        setSwapError('Cannot perform swap: Unknown error')
+      }
     } finally {
       setSwapping(false)
     }
@@ -1006,13 +1061,16 @@ export function SwapInterface({
     // Đánh dấu là người dùng đã chủ động chọn token đầu vào
     setUserSelectedTokens(prev => ({ ...prev, from: true }))
 
+    // Reset any swap errors
+    setSwapError('')
+
     setFromTokenMint(tokenMint)
 
     // Reset token đầu ra nếu đã chọn trước đó và không còn tương thích
     if (toTokenMint && !compatibleTokens.includes(toTokenMint)) {
       setToTokenMint('')
       // Thông báo với người dùng
-      toast.info('Đã đặt lại token đầu ra vì không tìm thấy pool tương thích')
+      toast.info('Output token has been reset as no compatible pool was found')
 
       // Chỉ reset pool đã chọn thủ công khi token đầu ra không còn tương thích
       setUserSelectedPool(false)
@@ -1021,7 +1079,7 @@ export function SwapInterface({
     }
 
     // Thông báo với người dùng
-    toast.info('Đang tìm các token tương thích...')
+    toast.info('Finding compatible tokens...')
   }
 
   // Hiển thị trong giao diện
@@ -1426,32 +1484,76 @@ export function SwapInterface({
               </div>
 
               {/* Swap Button */}
-              {!isConnected ? (
-                <Button className="w-full" disabled={swapping}>
-                  Connect Wallet
-                </Button>
-              ) : (
-                <Button
-                  className="w-full"
-                  onClick={handleSwap}
-                  disabled={
-                    swapping ||
-                    !fromAmount ||
-                    parseFloat(fromAmount) <= 0 ||
-                    !fromTokenMint ||
-                    !toTokenMint ||
-                    !currentPool
-                  }
-                >
-                  {swapping ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Swapping...
-                    </>
-                  ) : (
-                    'Swap'
-                  )}
-                </Button>
+              <Button
+                className="w-full"
+                disabled={
+                  !fromAmount ||
+                  !toAmount ||
+                  Number(fromAmount) <= 0 ||
+                  !fromToken ||
+                  !toToken ||
+                  !poolAddress ||
+                  swapping ||
+                  calculating ||
+                  !wallet.publicKey
+                }
+                onClick={handleSwap}
+              >
+                {swapping ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('swap.swapping')}
+                  </>
+                ) : !wallet.publicKey ? (
+                  t('swap.connect_wallet')
+                ) : !fromToken || !toToken ? (
+                  t('swap.select_tokens')
+                ) : !fromAmount || Number(fromAmount) <= 0 ? (
+                  t('swap.enter_amount')
+                ) : (
+                  t('swap.swap')
+                )}
+              </Button>
+
+              {/* Display Swap Error */}
+              {swapError && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Swap Error</AlertTitle>
+                  <AlertDescription>{swapError}</AlertDescription>
+                </Alert>
               )}
+
+              {/* Pool Liquidity Warning */}
+              {currentPool && fromToken && toToken && swapData && !swapError && (
+                <>
+                  {/* Kiểm tra nếu pool có thanh khoản thấp */}
+                  {(() => {
+                    const isToken0 = currentPool.token0Mint.toString() === fromToken.mint
+                    const outBalance = isToken0
+                      ? currentPool.token1Balance || 0
+                      : currentPool.token0Balance || 0
+                    const requestedAmount = swapData.outputAmount
+
+                    // Hiển thị cảnh báo nếu lượng token yêu cầu > 50% số dư trong pool
+                    if (requestedAmount > outBalance * 0.5) {
+                      return (
+                        <Alert variant="destructive" className="mt-4">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Low Liquidity</AlertTitle>
+                          <AlertDescription>
+                            This pool has low {toToken.symbol} liquidity ({outBalance.toFixed(4)}).
+                            Your transaction may experience high slippage or fail.
+                          </AlertDescription>
+                        </Alert>
+                      )
+                    }
+                    return null
+                  })()}
+                </>
+              )}
+
+              {/* Pool Info */}
             </>
           )}
         </CardContent>

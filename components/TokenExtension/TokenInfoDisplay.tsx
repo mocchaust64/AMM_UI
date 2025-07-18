@@ -21,8 +21,17 @@ interface TokenExtensionDetails {
   error?: string
 }
 
+// Mở rộng TokenData để bao gồm các trường từ GitHub token
+interface ExtendedTokenData extends TokenData {
+  description?: string
+  uri?: string
+  externalUrl?: string
+  supply?: string
+  metadata?: Record<string, unknown>
+}
+
 interface TokenInfoDisplayProps {
-  token?: TokenData | null
+  token?: ExtendedTokenData | null
   title?: string
 }
 
@@ -50,7 +59,7 @@ export function TokenIconDisplay({
   )
 }
 
-export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
+export function TokenInfoDisplay({ token, title }: TokenInfoDisplayProps) {
   const [extensionInfo, setExtensionInfo] = useState<TokenExtensionDetails | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,7 +67,7 @@ export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
 
   useEffect(() => {
     async function fetchTokenExtensions() {
-      if (!token || token.mint === 'SOL' || !token.isToken2022) {
+      if (!token || token.mint === 'SOL') {
         setExtensionInfo(null)
         return
       }
@@ -77,8 +86,8 @@ export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
       }
     }
 
-    // Only find extensions for token-2022
-    if (token && token.mint !== 'SOL' && token.isToken2022) {
+    // Tìm extensions cho cả token-2022 và SPL token
+    if (token && token.mint !== 'SOL') {
       fetchTokenExtensions()
     } else {
       setExtensionInfo(null)
@@ -101,6 +110,11 @@ export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
     return `${address.slice(0, 6)}...${address.slice(-6)}`
   }
 
+  // Định dạng số tiền với dấu phẩy ngăn cách hàng nghìn
+  const formatBalance = (balance: number) => {
+    return new Intl.NumberFormat('en-US').format(balance)
+  }
+
   return (
     <Card className="bg-background border-0 shadow-md p-4 rounded-xl">
       <div className="flex items-center space-x-4">
@@ -108,26 +122,30 @@ export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
           {token.icon ? (
             <Image
               src={token.icon}
-              alt={token.symbol}
+              alt={token.symbol || 'Token'}
               width={48}
               height={48}
               className="w-full h-full object-cover app-logo"
             />
           ) : (
-            <div className="text-white font-semibold text-lg">{token.symbol.slice(0, 2)}</div>
+            <div className="text-white font-semibold text-lg">
+              {(token.symbol || '??').slice(0, 2)}
+            </div>
           )}
         </div>
 
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold text-lg">{token.symbol}</h3>
+            <h3 className="font-bold text-lg">{token.symbol || 'Unknown'}</h3>
             {token.isToken2022 && (
               <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">
                 Token 2022
               </span>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">{token.name}</p>
+          <p className="text-sm text-muted-foreground">
+            {token.name || `Token ${shortenAddress(token.mint)}`}
+          </p>
 
           <div className="mt-1 flex items-center gap-2">
             <a
@@ -143,7 +161,7 @@ export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
         </div>
 
         <div className="text-right flex flex-col items-end">
-          <div className="text-xl font-bold">{token.balance.toLocaleString()}</div>
+          <div className="text-xl font-bold">{formatBalance(token.balance)}</div>
           <div className="text-sm text-muted-foreground">~${(token.balance * 10).toFixed(2)}</div>
 
           {token.mint !== 'SOL' && (
@@ -170,8 +188,16 @@ export function TokenInfoDisplay({ token }: TokenInfoDisplayProps) {
         </div>
       </div>
 
-      {/* Chỉ hiển thị phần Extensions cho token-2022 */}
-      {token.isToken2022 && token.mint !== 'SOL' && (
+      {/* Hiển thị mô tả nếu có */}
+      {token.description && (
+        <div className="mt-4">
+          <h4 className="text-sm font-medium mb-2">Description</h4>
+          <p className="text-xs text-muted-foreground">{token.description}</p>
+        </div>
+      )}
+
+      {/* Hiển thị phần Extensions cho cả token-2022 và SPL token */}
+      {token.mint !== 'SOL' && (
         <div className="mt-4">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium mb-2">Extensions</h4>

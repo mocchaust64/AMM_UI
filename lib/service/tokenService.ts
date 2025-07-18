@@ -152,8 +152,7 @@ export class TokenService {
           isToken2022 = false
           validToken = true
         } catch {
-          // Loại bỏ biến error không sử dụng và console.log
-          // Not a standard SPL token, trying Token-2022 program
+          // Không phải SPL token tiêu chuẩn, thử với Token-2022
         }
 
         // Nếu không phải SPL token, thử với TOKEN_2022_PROGRAM_ID
@@ -163,8 +162,7 @@ export class TokenService {
             isToken2022 = true
             validToken = true
           } catch {
-            // Loại bỏ biến error không sử dụng và console.log
-            // Not a Token-2022 token either, using default values
+            // Không phải Token-2022, sử dụng giá trị mặc định
           }
         }
 
@@ -188,7 +186,7 @@ export class TokenService {
             }
           }
         } catch {
-          // Loại bỏ biến error không sử dụng và console.log
+          // Xử lý im lặng lỗi khi lấy metadata từ Metaplex
         }
 
         // Nếu không lấy được qua Metaplex, thử phương pháp spl-token tiêu chuẩn
@@ -201,7 +199,7 @@ export class TokenService {
             isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
           )
         } catch {
-          // Loại bỏ biến error không sử dụng và console.log
+          // Xử lý im lặng lỗi khi lấy metadata từ token program
         }
 
         if (tokenMetadata) {
@@ -222,7 +220,7 @@ export class TokenService {
                 metadataImage = metadataJson.image || metadataImage
               }
             } catch {
-              // Loại bỏ biến error không sử dụng và console.log
+              // Xử lý im lặng lỗi khi tải URI
             }
           }
 
@@ -242,7 +240,7 @@ export class TokenService {
           }
         }
       } catch {
-        // Loại bỏ biến error không sử dụng và console.log
+        // Xử lý im lặng lỗi không xác định
       }
     }
 
@@ -261,112 +259,116 @@ export class TokenService {
    * @returns Thông tin metadata của token
    */
   static async getMetaplexTokenMetadata(tokenAddress: string, connection: Connection) {
-    const mintPublicKey = new PublicKey(tokenAddress)
-
-    // Kiểm tra loại token trước (SPL Token hoặc Token-2022)
-    let isToken2022 = false
-
     try {
-      // Thử lấy thông tin với TOKEN_PROGRAM_ID (SPL Token)
-      await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
-    } catch {
-      // Nếu lỗi, thử với TOKEN_2022_PROGRAM_ID
+      const mintPublicKey = new PublicKey(tokenAddress)
+
+      // Kiểm tra loại token trước (SPL Token hoặc Token-2022)
+      let isToken2022 = false
+      let validToken = false
+
       try {
-        await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
-        isToken2022 = true
+        // Thử lấy thông tin với TOKEN_PROGRAM_ID (SPL Token)
+        await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
+        validToken = true
       } catch {
-        // Không phải token hợp lệ
-        throw new Error('Invalid token')
-      }
-    }
-
-    // Khởi tạo Metaplex instance
-    const metaplex = Metaplex.make(connection)
-
-    // Với token-2022, thử lấy metadata từ on-chain trước tiên
-    if (isToken2022) {
-      try {
-        // Lấy metadata từ token program
-        const tokenMetadata = await getTokenMetadata(
-          connection,
-          mintPublicKey,
-          undefined,
-          TOKEN_2022_PROGRAM_ID
-        )
-
-        if (tokenMetadata) {
-          const metadata = {
-            name:
-              tokenMetadata.name || `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
-            symbol: tokenMetadata.symbol || tokenAddress.slice(0, 4).toUpperCase(),
-            uri: tokenMetadata.uri || '',
-            image: null as string | null,
-            description: null as string | null,
-          }
-
-          // Nếu có URI, tải thêm thông tin
-          if (tokenMetadata.uri) {
-            try {
-              const response = await fetch(tokenMetadata.uri)
-              if (response.ok) {
-                const metadataJson = await response.json()
-                metadata.image = metadataJson.image || null
-                metadata.description = metadataJson.description || null
-              }
-            } catch {
-              // Loại bỏ biến error không sử dụng và console.log
-            }
-          }
-
-          return metadata
-        }
-      } catch {
-        // Loại bỏ biến error không sử dụng và console.log
-      }
-    }
-
-    // Đối với SPL token hoặc nếu không lấy được metadata từ token-2022
-    // Thử sử dụng Metaplex, bọc trong try-catch để tránh lỗi AccountNotFoundError
-    try {
-      const nft = await metaplex.nfts().findByMint({ mintAddress: mintPublicKey })
-
-      // Tạo object chứa metadata
-      const metadata = {
-        name: nft.name,
-        symbol: nft.symbol,
-        uri: nft.uri,
-        image: null as string | null,
-        description: null as string | null,
-      }
-
-      // Nếu có JSON metadata, lấy thêm thông tin
-      if (nft.json) {
-        metadata.image = nft.json.image || null
-        metadata.description = nft.json.description || null
-      } else if (nft.uri) {
-        // Nếu không có sẵn JSON nhưng có URI, tải metadata từ URI
+        // Nếu lỗi, thử với TOKEN_2022_PROGRAM_ID
         try {
-          const response = await fetch(nft.uri)
-          if (response.ok) {
-            const metadataJson = await response.json()
-            metadata.image = metadataJson.image || null
-            metadata.description = metadataJson.description || null
+          await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
+          isToken2022 = true
+          validToken = true
+        } catch {
+          // Không phải token hợp lệ, trả về thông tin mặc định
+          return {
+            name: `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
+            symbol: tokenAddress.slice(0, 4).toUpperCase(),
+            uri: '',
+            image: null,
+            description: null,
+          }
+        }
+      }
+
+      // Khởi tạo Metaplex instance
+      const metaplex = Metaplex.make(connection)
+
+      // Với token-2022, thử lấy metadata từ on-chain trước tiên
+      if (isToken2022) {
+        try {
+          // Lấy metadata từ token program
+          const tokenMetadata = await getTokenMetadata(
+            connection,
+            mintPublicKey,
+            undefined,
+            TOKEN_2022_PROGRAM_ID
+          )
+
+          if (tokenMetadata) {
+            const metadata = {
+              name:
+                tokenMetadata.name ||
+                `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
+              symbol: tokenMetadata.symbol || tokenAddress.slice(0, 4).toUpperCase(),
+              uri: tokenMetadata.uri || '',
+              image: null as string | null,
+              description: null as string | null,
+            }
+
+            // Nếu có URI, tải thêm thông tin
+            if (tokenMetadata.uri) {
+              try {
+                const response = await fetch(tokenMetadata.uri)
+                if (response.ok) {
+                  const metadataJson = await response.json()
+                  metadata.image = metadataJson.image || null
+                  metadata.description = metadataJson.description || null
+                }
+              } catch {
+                // Xử lý im lặng lỗi khi tải URI
+              }
+            }
+
+            return metadata
           }
         } catch {
-          // Loại bỏ biến error không sử dụng và console.log
+          // Xử lý im lặng lỗi khi lấy metadata từ token program
         }
       }
 
-      return metadata
-    } catch (error) {
-      // Xử lý khi không tìm thấy metadata
-      if (
-        error instanceof Error &&
-        error.message &&
-        error.message.includes('AccountNotFoundError')
-      ) {
-        // Loại bỏ console.log
-        // Trả về thông tin mặc định
+      // Đối với SPL token hoặc nếu không lấy được metadata từ token-2022
+      // Thử sử dụng Metaplex
+      try {
+        const nft = await metaplex.nfts().findByMint({ mintAddress: mintPublicKey })
+
+        // Tạo object chứa metadata
+        const metadata = {
+          name: nft.name,
+          symbol: nft.symbol,
+          uri: nft.uri,
+          image: null as string | null,
+          description: null as string | null,
+        }
+
+        // Nếu có JSON metadata, lấy thêm thông tin
+        if (nft.json) {
+          metadata.image = nft.json.image || null
+          metadata.description = nft.json.description || null
+        } else if (nft.uri) {
+          // Nếu không có sẵn JSON nhưng có URI, tải metadata từ URI
+          try {
+            const response = await fetch(nft.uri)
+            if (response.ok) {
+              const metadataJson = await response.json()
+              metadata.image = metadataJson.image || null
+              metadata.description = metadataJson.description || null
+            }
+          } catch {
+            // Xử lý im lặng lỗi khi tải URI
+          }
+        }
+
+        return metadata
+      } catch (error) {
+        // Không tìm thấy metadata, trả về thông tin mặc định
         return {
           name: `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
           symbol: tokenAddress.slice(0, 4).toUpperCase(),
@@ -375,7 +377,15 @@ export class TokenService {
           description: null,
         }
       }
-      throw error
+    } catch (error) {
+      // Lỗi không xác định, trả về thông tin mặc định
+      return {
+        name: `Token ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`,
+        symbol: tokenAddress.slice(0, 4).toUpperCase(),
+        uri: '',
+        image: null,
+        description: null,
+      }
     }
   }
 }

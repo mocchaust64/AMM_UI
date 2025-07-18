@@ -221,7 +221,7 @@ export class PoolFinder {
     const outBalance = isToken0 ? pool.token1Balance || 0 : pool.token0Balance || 0
 
     if (inBalance === 0 || outBalance === 0) {
-      throw new Error('Pool không có đủ thanh khoản')
+      throw new Error('Pool does not have enough liquidity')
     }
 
     // Lấy phí giao dịch từ pool, mặc định 0.25% nếu không có
@@ -255,6 +255,11 @@ export class PoolFinder {
 
     // Số lượng token đầu ra nhận được
     const outputAmount = outBalance - outBalanceAfterSwap
+
+    // Kiểm tra xem pool có đủ token đầu ra không
+    if (outputAmount <= 0 || outputAmount > outBalance * 0.99) {
+      throw new Error('Insufficient tokens in pool for this transaction')
+    }
 
     // Tỷ giá: 1 token đầu vào = ? token đầu ra
     const rate = outputAmount / amount

@@ -7,8 +7,8 @@ import { SwapInterface } from '@/components/swap/swap-interface'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TokenInfoDisplay } from '@/components/TokenExtension/TokenInfoDisplay'
-import { useWalletTokens } from '@/hooks/useWalletTokens'
-import { GithubPoolService } from '@/lib/service/githubPoolService'
+import { useWalletTokens, TokenData } from '@/hooks/useWalletTokens'
+import { GithubPoolService, GithubTokenInfo } from '@/lib/service/githubPoolService'
 
 // Sửa định nghĩa kiểu dữ liệu cho pool để phù hợp với GithubPoolInfo
 interface Pool {
@@ -37,6 +37,15 @@ interface Pool {
   lastUpdated?: string
 }
 
+// Tạo interface cho token hiển thị để có thể kết hợp cả TokenData và GithubTokenInfo
+interface DisplayToken extends TokenData {
+  description?: string
+  uri?: string
+  externalUrl?: string
+  supply?: string
+  metadata?: Record<string, unknown>
+}
+
 export default function SwapPage() {
   const { tokens } = useWalletTokens()
   const [fromToken, setFromToken] = useState<string>('')
@@ -47,6 +56,10 @@ export default function SwapPage() {
   const [selectedPool, setSelectedPool] = useState<Pool | null>(null)
   const [availablePools, setAvailablePools] = useState<Pool[]>([])
   const [loadingDefaultPool, setLoadingDefaultPool] = useState<boolean>(true)
+
+  // Thêm state để lưu thông tin token từ GitHub
+  const [githubTokens, setGithubTokens] = useState<GithubTokenInfo[]>([])
+  const [loadingGithubTokens, setLoadingGithubTokens] = useState<boolean>(false)
 
   // Lấy thời gian cập nhật token cuối cùng từ localStorage
   useEffect(() => {
@@ -69,7 +82,6 @@ export default function SwapPage() {
   }, [tokens])
 
   // Tải danh sách pools từ GitHub nhưng không tự động chọn pool mặc định
-  // Load pool list from GitHub but don't automatically select a default pool
   useEffect(() => {
     const loadPools = async () => {
       setLoadingDefaultPool(true)
@@ -77,8 +89,6 @@ export default function SwapPage() {
         const pools = await GithubPoolService.getAllPools()
         if (pools && pools.length > 0) {
           setAvailablePools(pools)
-          // Don't automatically select pool and set tokens anymore
-          // Let the user choose which pool they want to use
         }
       } catch (error) {
         console.error('Error loading pools from GitHub:', error)
@@ -90,8 +100,93 @@ export default function SwapPage() {
     loadPools()
   }, [])
 
-  const selectedFromToken = tokens.find(t => t.mint === fromToken)
-  const selectedToToken = tokens.find(t => t.mint === toToken)
+  // Tải danh sách token từ GitHub
+  useEffect(() => {
+    const loadGithubTokens = async () => {
+      setLoadingGithubTokens(true)
+      try {
+        const tokensData = await GithubPoolService.getAllPoolTokens()
+        setGithubTokens(tokensData)
+      } catch (error) {
+        console.error('Error loading tokens from GitHub:', error)
+      } finally {
+        setLoadingGithubTokens(false)
+      }
+    }
+
+    loadGithubTokens()
+  }, [])
+
+  // Tìm token từ danh sách token trong ví
+  const walletFromToken = tokens.find(t => t.mint === fromToken)
+  const walletToToken = tokens.find(t => t.mint === toToken)
+
+  // Tìm token từ danh sách token từ GitHub
+  const githubFromToken = githubTokens.find(t => t.mint === fromToken)
+  const githubToToken = githubTokens.find(t => t.mint === toToken)
+
+  // Kết hợp thông tin token từ ví và từ GitHub
+  const createDisplayToken = (
+    walletToken: TokenData | undefined,
+    githubToken: GithubTokenInfo | undefined
+  ): DisplayToken | undefined => {
+    if (!walletToken && !githubToken) return undefined
+
+    if (walletToken && githubToken) {
+      // Kết hợp thông tin từ cả hai nguồn
+      // Ưu tiên thông tin tên và symbol từ GitHub cho tất cả các token
+      return {
+        ...walletToken,
+        // Ưu tiên thông tin từ GitHub cho tên và symbol
+        name: githubToken.name || walletToken.name || 'Unknown Token',
+        symbol: githubToken.symbol || walletToken.symbol || 'UNKNOWN',
+        icon: githubToken.icon || walletToken.icon || '',
+        // Các thông tin khác từ GitHub
+        description: githubToken.description,
+        uri: githubToken.uri,
+        externalUrl: githubToken.externalUrl,
+        supply: githubToken.supply,
+        metadata: githubToken.metadata,
+        // Thông tin về loại token
+        isToken2022:
+          walletToken.isToken2022 !== undefined ? walletToken.isToken2022 : githubToken.isToken2022,
+      }
+    }
+
+    if (walletToken) {
+      // Chỉ có thông tin từ ví
+      return {
+        ...walletToken,
+      }
+    }
+
+    if (githubToken) {
+      // Chỉ có thông tin từ GitHub
+      const mint = githubToken.mint
+      // Nếu không có mint address, không thể tạo token
+      if (!mint) return undefined
+
+      return {
+        mint: mint,
+        symbol: githubToken.symbol || mint.slice(0, 4).toUpperCase(),
+        name: githubToken.name || `Token ${mint.slice(0, 6)}...${mint.slice(-4)}`,
+        icon: githubToken.icon || '',
+        balance: 0,
+        decimals: githubToken.decimals || 9,
+        isToken2022: githubToken.isToken2022 || false,
+        description: githubToken.description,
+        uri: githubToken.uri,
+        externalUrl: githubToken.externalUrl,
+        supply: githubToken.supply,
+        metadata: githubToken.metadata,
+      }
+    }
+
+    return undefined
+  }
+
+  const selectedFromToken = createDisplayToken(walletFromToken, githubFromToken)
+  const selectedToToken = createDisplayToken(walletToToken, githubToToken)
 
   return (
     <div className="min-h-screen bg-background">

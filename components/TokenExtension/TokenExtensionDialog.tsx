@@ -17,8 +17,17 @@ import {
 } from '@/components/ui/table'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
+// Mở rộng TokenData để bao gồm các trường từ GitHub token
+interface ExtendedTokenData extends TokenData {
+  description?: string
+  uri?: string
+  externalUrl?: string
+  supply?: string
+  metadata?: Record<string, unknown>
+}
+
 interface TokenExtensionDialogProps {
-  token: TokenData | undefined
+  token: ExtendedTokenData | undefined
   isOpen: boolean
   onClose: () => void
 }
@@ -47,7 +56,7 @@ export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionD
   // Fetch extension info when dialog opens
   useEffect(() => {
     async function fetchTokenExtensions() {
-      if (!isOpen || !token || token.mint === 'SOL' || !token.isToken2022) {
+      if (!isOpen || !token || token.mint === 'SOL') {
         setExtensionInfo(null)
         return
       }
@@ -137,8 +146,7 @@ export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionD
     }
   }
 
-  // Hiển thị thông báo phù hợp nếu token không phải token-2022
-  // Display appropriate message if token is not token-2022
+  // Hiển thị thông tin token
   const renderContent = () => {
     if (!token) {
       return <div>No token information available</div>
@@ -146,12 +154,6 @@ export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionD
 
     if (token.mint === 'SOL') {
       return <div className="py-4 text-center">SOL is a native token and has no extensions</div>
-    }
-
-    if (!token.isToken2022) {
-      return (
-        <div className="py-4 text-center">Standard SPL Token doesn&apos;t support extensions</div>
-      )
     }
 
     return (
@@ -185,6 +187,24 @@ export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionD
                 <div className="col-span-2">
                   <p className="text-sm font-medium text-muted-foreground">Token Account Address</p>
                   <p className="font-mono text-sm break-all">{token.address}</p>
+                </div>
+              )}
+              {token.description && (
+                <div className="col-span-2">
+                  <p className="text-sm font-medium text-muted-foreground">Description</p>
+                  <p className="text-sm">{token.description}</p>
+                </div>
+              )}
+              {token.uri && (
+                <div className="col-span-2">
+                  <p className="text-sm font-medium text-muted-foreground">Metadata URI</p>
+                  <p className="font-mono text-xs break-all">{token.uri}</p>
+                </div>
+              )}
+              {token.supply && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Supply</p>
+                  <p>{token.supply}</p>
                 </div>
               )}
             </div>
@@ -248,27 +268,27 @@ export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionD
                     <div className="mt-4">
                       <h3 className="text-lg font-medium mb-2">Whitelist Addresses</h3>
                       {loadingWhitelist ? (
-                        <div className="flex items-center justify-center py-4">
+                        <div className="flex items-center py-4">
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
                           <span>Loading whitelist...</span>
                         </div>
                       ) : whitelistError ? (
-                        <p className="text-red-500">{whitelistError}</p>
+                        <p className="text-red-500 text-sm">{whitelistError}</p>
                       ) : whitelist.length === 0 ? (
-                        <p className="text-muted-foreground">No addresses found in whitelist</p>
+                        <p className="text-muted-foreground">No whitelist addresses found</p>
                       ) : (
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="w-12">#</TableHead>
                               <TableHead>Address</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {whitelist.map((address, index) => (
                               <TableRow key={index}>
-                                <TableCell>{index + 1}</TableCell>
-                                <TableCell className="font-mono text-sm">{address}</TableCell>
+                                <TableCell className="font-mono text-xs break-all">
+                                  {address}
+                                </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -279,6 +299,35 @@ export function TokenExtensionDialog({ token, isOpen, onClose }: TokenExtensionD
                 </div>
               )}
             </>
+          )}
+
+          {/* Metadata */}
+          {token.metadata && Object.keys(token.metadata).length > 0 && (
+            <div>
+              <h3 className="text-lg font-medium mb-2">Additional Metadata</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Key</TableHead>
+                    <TableHead>Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(token.metadata)
+                    .filter(
+                      ([key]) => !['name', 'symbol', 'description', 'image', 'uri'].includes(key)
+                    )
+                    .map(([key, value], index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{key}</TableCell>
+                        <TableCell className="break-all">
+                          {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </ScrollArea>

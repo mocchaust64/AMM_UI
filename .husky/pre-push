@@ -1,5 +1,5 @@
 #!/bin/sh
-
+ 
 echo "🧪 Running strict lint checks and type checking before pushing..."
 npm run lint:strict || exit 1
 # Bỏ qua type-check để không kiểm tra các file test
