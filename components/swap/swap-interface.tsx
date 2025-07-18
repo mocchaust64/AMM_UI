@@ -1085,7 +1085,6 @@ export function SwapInterface({
       }
 
       const isToken0 = currentPool.token0Mint.toString() === fromToken.mint
-      const inBalance = isToken0 ? currentPool.token0Balance || 0 : currentPool.token1Balance || 0
       const outBalance = isToken0 ? currentPool.token1Balance || 0 : currentPool.token0Balance || 0
 
       // Tính số lượng token đầu vào tối đa có thể swap
