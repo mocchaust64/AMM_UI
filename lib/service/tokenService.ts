@@ -264,18 +264,15 @@ export class TokenService {
 
       // Kiểm tra loại token trước (SPL Token hoặc Token-2022)
       let isToken2022 = false
-      let validToken = false
 
       try {
         // Thử lấy thông tin với TOKEN_PROGRAM_ID (SPL Token)
         await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
-        validToken = true
       } catch {
         // Nếu lỗi, thử với TOKEN_2022_PROGRAM_ID
         try {
           await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
           isToken2022 = true
-          validToken = true
         } catch {
           // Không phải token hợp lệ, trả về thông tin mặc định
           return {

@@ -257,8 +257,13 @@ export class PoolFinder {
     const outputAmount = outBalance - outBalanceAfterSwap
 
     // Kiểm tra xem pool có đủ token đầu ra không
-    if (outputAmount <= 0 || outputAmount > outBalance * 0.99) {
+    if (outputAmount <= 0) {
       throw new Error('Insufficient tokens in pool for this transaction')
+    }
+
+    // Kiểm tra xem số lượng đầu ra có vượt quá 99% thanh khoản không
+    if (outputAmount > outBalance * 0.99) {
+      throw new Error('Transaction would drain too much liquidity from pool')
     }
 
     // Tỷ giá: 1 token đầu vào = ? token đầu ra

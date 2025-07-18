@@ -423,6 +423,35 @@ export function SwapInterface({
   const fromToken = tokens.find(token => token.mint === fromTokenMint)
   const toToken = tokens.find(token => token.mint === toTokenMint)
 
+  // Hàm tính toán số lượng token tối đa có thể swap
+  const calculateMaxSwapAmount = useCallback(() => {
+    if (!currentPool || !fromToken || !toToken) {
+      return 0
+    }
+
+    // Xác định token đầu vào và đầu ra
+    const isToken0 = currentPool.token0Mint.toString() === fromToken.mint
+    const inBalance = isToken0 ? currentPool.token0Balance || 0 : currentPool.token1Balance || 0
+    const outBalance = isToken0 ? currentPool.token1Balance || 0 : currentPool.token0Balance || 0
+
+    if (inBalance === 0 || outBalance === 0) {
+      return 0
+    }
+
+    // Công thức AMM: (inBalance + amountIn) * (outBalance - amountOut) = k
+    // Khi outBalance - amountOut tiến gần tới 0, amountIn tiến gần tới giá trị tối đa
+    // Để đảm bảo an toàn, chúng ta giữ lại ít nhất 1% thanh khoản
+    const reserveRatio = 0.01 // Giữ lại 1% thanh khoản
+
+    // Tính toán số lượng tối đa có thể swap
+    // Công thức: maxAmountIn = (outBalance * (1 - reserveRatio) * inBalance) / (reserveRatio * outBalance) - inBalance
+    // Đơn giản hóa: maxAmountIn = (inBalance / reserveRatio) - inBalance = inBalance * ((1 / reserveRatio) - 1)
+    const maxSwapAmount = inBalance * (1 / reserveRatio - 1)
+
+    // Đảm bảo maxSwapAmount luôn dương
+    return Math.max(0, maxSwapAmount * 0.9) // Thêm hệ số an toàn 90%
+  }, [currentPool, fromToken, toToken])
+
   // Hàm để lấy danh sách pool từ GitHub với caching
   const getGithubPoolsWithCache = useCallback(async (): Promise<SwapGithubPool[]> => {
     // Nếu có sẵn pools từ props, ưu tiên sử dụng chúng
@@ -845,16 +874,56 @@ export function SwapInterface({
       // Tính toán dựa trên số dư thực tế trong pool
       const amountIn = Number(fromAmount)
 
-      // Tính toán tỷ giá dựa trên dữ liệu pool
-      const result = poolFinder.calculateRate(currentPool, fromToken.mint, amountIn)
+      // Kiểm tra xem pool có đủ thanh khoản không
+      const isToken0 = currentPool.token0Mint.toString() === fromToken.mint
+      const inBalance = isToken0 ? currentPool.token0Balance || 0 : currentPool.token1Balance || 0
+      const outBalance = isToken0 ? currentPool.token1Balance || 0 : currentPool.token0Balance || 0
 
-      setToAmount(result.outputAmount.toFixed(6))
-      setSwapData({
-        outputAmount: result.outputAmount,
-        rate: result.rate,
-        minimumReceived: result.minimumReceived,
-        route: 'Raydium',
-      })
+      if (inBalance === 0 || outBalance === 0) {
+        setSwapError('Pool does not have enough liquidity')
+        setToAmount('')
+        setSwapData(null)
+        return
+      }
+
+      // Tính số lượng token đầu vào tối đa có thể swap
+      const safeMaxAmount = calculateMaxSwapAmount()
+
+      // Nếu số lượng cần swap vượt quá khả năng của pool
+      if (amountIn > safeMaxAmount) {
+        // Hiển thị thông báo và tính toán với số lượng tối đa
+
+        // Tính toán tỷ giá dựa trên số lượng an toàn
+        const result = poolFinder.calculateRate(currentPool, fromToken.mint, safeMaxAmount)
+
+        // Hiển thị kết quả với số lượng an toàn
+        setToAmount(result.outputAmount.toFixed(6))
+        setSwapData({
+          outputAmount: result.outputAmount,
+          rate: result.rate,
+          minimumReceived: result.minimumReceived,
+          route: 'Raydium',
+        })
+
+        // Hiển thị thông báo về giới hạn
+        setSwapError(
+          `Amount limited to maximum safe swap capacity: ${safeMaxAmount.toFixed(6)} ${fromToken.symbol}`
+        )
+      } else {
+        // Tính toán tỷ giá dựa trên dữ liệu pool với số lượng người dùng nhập
+        const result = poolFinder.calculateRate(currentPool, fromToken.mint, amountIn)
+
+        setToAmount(result.outputAmount.toFixed(6))
+        setSwapData({
+          outputAmount: result.outputAmount,
+          rate: result.rate,
+          minimumReceived: result.minimumReceived,
+          route: 'Raydium',
+        })
+
+        // Xóa thông báo lỗi nếu có
+        setSwapError('')
+      }
     } catch (error) {
       console.error('Error calculating swap:', error)
 
@@ -866,7 +935,9 @@ export function SwapInterface({
       if (error instanceof Error) {
         if (
           error.message.includes('Pool không đủ token') ||
-          error.message.includes('Pool không có đủ thanh khoản')
+          error.message.includes('Pool không có đủ thanh khoản') ||
+          error.message.includes('Insufficient') ||
+          error.message.includes('Pool does not have enough')
         ) {
           setSwapError('Insufficient liquidity in pool for this swap')
         } else {
@@ -878,7 +949,16 @@ export function SwapInterface({
     } finally {
       setCalculating(false)
     }
-  }, [fromAmount, fromToken, toToken, provider, poolAddress, currentPool, poolFinder])
+  }, [
+    fromAmount,
+    fromToken,
+    toToken,
+    provider,
+    poolAddress,
+    currentPool,
+    poolFinder,
+    calculateMaxSwapAmount,
+  ])
 
   useEffect(() => {
     if (fromAmount && Number(fromAmount) > 0 && fromToken && toToken && currentPool) {
@@ -889,12 +969,33 @@ export function SwapInterface({
     }
   }, [fromAmount, fromToken, toToken, currentPool, calculateSwap, poolFinder])
 
+  // Tính toán số lượng token tối đa khi pool hoặc token thay đổi
+  useEffect(() => {
+    if (fromToken && toToken && currentPool) {
+      const maxAmount = calculateMaxSwapAmount()
+
+      // Nếu số lượng hiện tại vượt quá giới hạn, điều chỉnh
+      if (fromAmount && parseFloat(fromAmount) > maxAmount) {
+        setFromAmount(maxAmount.toFixed(6))
+        toast.info(
+          `Amount adjusted to maximum safe swap capacity: ${maxAmount.toFixed(6)} ${fromToken.symbol}`
+        )
+      }
+    }
+  }, [fromToken, toToken, currentPool, calculateMaxSwapAmount, fromAmount])
+
   const handleSwapTokens = () => {
+    // Lưu giá trị hiện tại
     const tempTokenMint = fromTokenMint
+    const tempAmount = fromAmount
+
+    // Đảo token
     setFromTokenMint(toTokenMint)
     setToTokenMint(tempTokenMint)
+
+    // Đảo số lượng
     setFromAmount(toAmount)
-    setToAmount(fromAmount)
+    setToAmount(tempAmount)
 
     // Chuyển đổi trạng thái của token đã chọn
     const tempFromSelected = userSelectedTokens.from
@@ -910,23 +1011,47 @@ export function SwapInterface({
 
     // Reset swap error when switching tokens
     setSwapError('')
+
+    // Đợi một tick để đảm bảo token đã được đổi
+    setTimeout(() => {
+      // Khi đảo token, chúng ta cần tính toán lại toàn bộ
+      // Việc này sẽ được xử lý tự động bởi useEffect phụ thuộc vào fromToken, toToken
+      // Không cần kiểm tra giới hạn ở đây vì useEffect sẽ làm điều đó
+    }, 0)
   }
 
-  // Thêm hàm validate amount để không cho phép nhập quá số dư
+  // Thêm hàm validate amount để không cho phép nhập quá số dư hoặc quá thanh khoản pool
   const validateAmount = (value: string, tokenBalance: number): string => {
     // Loại bỏ các ký tự không phải số
     const numericValue = value.replace(/[^0-9.]/g, '')
 
     // Nếu giá trị không phải số hợp lệ, trả về chuỗi rỗng
-    if (isNaN(parseFloat(numericValue))) {
+    if (isNaN(parseFloat(numericValue)) || numericValue === '') {
       return ''
     }
 
-    // Kiểm tra xem giá trị có vượt quá số dư không
     const amount = parseFloat(numericValue)
+
+    // Kiểm tra xem giá trị có vượt quá số dư không
     if (amount > tokenBalance) {
       setSwapError(`Amount exceeds your ${fromToken?.symbol || 'token'} balance`)
       return tokenBalance.toString()
+    }
+
+    // Kiểm tra xem giá trị có vượt quá thanh khoản pool không
+    if (currentPool && fromToken && toToken) {
+      try {
+        // Tính số lượng token đầu vào tối đa có thể swap
+        const safeMaxAmount = calculateMaxSwapAmount()
+
+        if (amount > safeMaxAmount) {
+          // Hiển thị thông báo nhưng vẫn cho phép nhập, chỉ giới hạn ở mức an toàn
+          toast.info(`Amount limited to maximum safe swap capacity: ${safeMaxAmount.toFixed(6)}`)
+          return safeMaxAmount.toFixed(6)
+        }
+      } catch (error) {
+        console.error('Error calculating max swap amount:', error)
+      }
     }
 
     // Clear error if valid
@@ -960,14 +1085,33 @@ export function SwapInterface({
       }
 
       const isToken0 = currentPool.token0Mint.toString() === fromToken.mint
+      const inBalance = isToken0 ? currentPool.token0Balance || 0 : currentPool.token1Balance || 0
       const outBalance = isToken0 ? currentPool.token1Balance || 0 : currentPool.token0Balance || 0
 
+      // Tính số lượng token đầu vào tối đa có thể swap
+      const safeMaxAmount = calculateMaxSwapAmount()
+
+      const amountIn = parseFloat(fromAmount)
+
+      // Nếu số lượng cần swap vượt quá khả năng của pool
+      let finalAmountIn = amountIn
+      if (amountIn > safeMaxAmount) {
+        // Sử dụng số lượng tối đa an toàn
+        finalAmountIn = safeMaxAmount
+
+        // Hiển thị thông báo
+        toast.info(
+          `Swap amount adjusted to maximum safe capacity: ${finalAmountIn.toFixed(6)} ${fromToken.symbol}`
+        )
+      }
+
+      // Kiểm tra xem pool có đủ token đầu ra không
       if (outBalance < swapData.outputAmount) {
         throw new Error(`Insufficient ${toToken.symbol} tokens in pool for this swap`)
       }
 
       // Chuyển đổi số lượng sang BN (với decimals của token)
-      const amountIn = new BN(parseFloat(fromAmount) * 10 ** fromToken.decimals)
+      const amountInBN = new BN(finalAmountIn * 10 ** fromToken.decimals)
       const minimumAmountOut = new BN(swapData.minimumReceived * 10 ** toToken.decimals)
 
       // Tìm token accounts cho cả input và output
@@ -981,7 +1125,7 @@ export function SwapInterface({
         outputToken: new PublicKey(toToken.mint),
         inputTokenAccount: new PublicKey(inputTokenAccount),
         outputTokenAccount: new PublicKey(outputTokenAccount),
-        amountIn,
+        amountIn: amountInBN,
         minimumAmountOut,
         hookTokenMint: new PublicKey(fromToken.mint), // Không còn sử dụng thực sự, giữ lại cho tương thích API
         wallet: {
@@ -996,7 +1140,7 @@ export function SwapInterface({
         signature: result.signature,
         fromToken: {
           symbol: fromToken.symbol,
-          amount: fromAmount,
+          amount: finalAmountIn.toString(),
           icon: fromToken.icon,
         },
         toToken: {
@@ -1522,35 +1666,6 @@ export function SwapInterface({
                   <AlertTitle>Swap Error</AlertTitle>
                   <AlertDescription>{swapError}</AlertDescription>
                 </Alert>
-              )}
-
-              {/* Pool Liquidity Warning */}
-              {currentPool && fromToken && toToken && swapData && !swapError && (
-                <>
-                  {/* Kiểm tra nếu pool có thanh khoản thấp */}
-                  {(() => {
-                    const isToken0 = currentPool.token0Mint.toString() === fromToken.mint
-                    const outBalance = isToken0
-                      ? currentPool.token1Balance || 0
-                      : currentPool.token0Balance || 0
-                    const requestedAmount = swapData.outputAmount
-
-                    // Hiển thị cảnh báo nếu lượng token yêu cầu > 50% số dư trong pool
-                    if (requestedAmount > outBalance * 0.5) {
-                      return (
-                        <Alert variant="destructive" className="mt-4">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Low Liquidity</AlertTitle>
-                          <AlertDescription>
-                            This pool has low {toToken.symbol} liquidity ({outBalance.toFixed(4)}).
-                            Your transaction may experience high slippage or fail.
-                          </AlertDescription>
-                        </Alert>
-                      )
-                    }
-                    return null
-                  })()}
-                </>
               )}
 
               {/* Pool Info */}
