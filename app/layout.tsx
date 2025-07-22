@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (pathname === '/') {
-      router.push('/swap')
+      router.push('/airdrop')
     }
   }, [pathname, router])
 

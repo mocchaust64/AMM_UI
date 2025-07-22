@@ -1,10 +1,12 @@
+'use client'
+
 import { Header } from '@/components/layout/header'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Accordion,
@@ -13,11 +15,9 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import {
-  MessageCircle,
   Mail,
   FileText,
   ExternalLink,
-  Clock,
   CheckCircle,
   AlertCircle,
   HelpCircle,
@@ -60,33 +60,6 @@ export default function SupportPage() {
     },
   ]
 
-  const supportTickets = [
-    {
-      id: '#12345',
-      subject: 'Swap transaction failed',
-      status: 'Open',
-      priority: 'High',
-      created: '2 hours ago',
-      lastUpdate: '1 hour ago',
-    },
-    {
-      id: '#12344',
-      subject: 'Cannot connect Phantom wallet',
-      status: 'In Progress',
-      priority: 'Medium',
-      created: '1 day ago',
-      lastUpdate: '6 hours ago',
-    },
-    {
-      id: '#12343',
-      subject: 'LP rewards not showing',
-      status: 'Resolved',
-      priority: 'Low',
-      created: '3 days ago',
-      lastUpdate: '2 days ago',
-    },
-  ]
-
   return (
     <div className="min-h-screen bg-background">
       <div className="flex">
@@ -103,7 +76,6 @@ export default function SupportPage() {
               <TabsList>
                 <TabsTrigger value="help">Help & FAQ</TabsTrigger>
                 <TabsTrigger value="contact">Contact Us</TabsTrigger>
-                <TabsTrigger value="tickets">My Tickets</TabsTrigger>
                 <TabsTrigger value="resources">Resources</TabsTrigger>
               </TabsList>
 
@@ -113,15 +85,21 @@ export default function SupportPage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <HelpCircle className="h-5 w-5" />
-                        Getting Started
+                        UI Source Code
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground mb-4">
-                        New to DeFi? Learn the basics of using our platform.
+                        Frontend source code for the AMM UI project.
                       </p>
-                      <Button variant="outline" className="w-full bg-transparent">
-                        View Guide
+                      <Button
+                        variant="outline"
+                        className="w-full bg-transparent"
+                        onClick={() =>
+                          window.open('https://github.com/mocchaust64/AMM_UI', '_blank')
+                        }
+                      >
+                        View on GitHub
                       </Button>
                     </CardContent>
                   </Card>
@@ -137,8 +115,14 @@ export default function SupportPage() {
                       <p className="text-sm text-muted-foreground mb-4">
                         Comprehensive guides and API documentation.
                       </p>
-                      <Button variant="outline" className="w-full bg-transparent">
-                        Read Docs
+                      <Button
+                        variant="outline"
+                        className="w-full bg-transparent"
+                        onClick={() =>
+                          window.open('https://github.com/mocchaust64/AMM_UI', '_blank')
+                        }
+                      >
+                        UI Source Code
                       </Button>
                     </CardContent>
                   </Card>
@@ -147,15 +131,24 @@ export default function SupportPage() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Video className="h-5 w-5" />
-                        Video Tutorials
+                        Program Source
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Step-by-step video guides for all features.
+                        Solana program source code for the AMM backend.
                       </p>
-                      <Button variant="outline" className="w-full bg-transparent">
-                        Watch Videos
+                      <Button
+                        variant="outline"
+                        className="w-full bg-transparent"
+                        onClick={() =>
+                          window.open(
+                            'https://github.com/mocchaust64/CPMMTransferHook/tree/master',
+                            '_blank'
+                          )
+                        }
+                      >
+                        View on GitHub
                       </Button>
                     </CardContent>
                   </Card>
@@ -186,21 +179,10 @@ export default function SupportPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="flex items-center gap-3 p-3 border rounded-lg">
-                        <MessageCircle className="h-5 w-5 text-blue-500" />
-                        <div>
-                          <h4 className="font-medium">Discord Community</h4>
-                          <p className="text-sm text-muted-foreground">Join our active community</p>
-                        </div>
-                        <Button size="sm" variant="outline" className="ml-auto bg-transparent">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      <div className="flex items-center gap-3 p-3 border rounded-lg">
                         <Mail className="h-5 w-5 text-green-500" />
                         <div>
                           <h4 className="font-medium">Email Support</h4>
-                          <p className="text-sm text-muted-foreground">support@solana-fi.com</p>
+                          <p className="text-sm text-muted-foreground">mocchaust64@gmail.com</p>
                         </div>
                         <Button size="sm" variant="outline" className="ml-auto bg-transparent">
                           <ExternalLink className="h-4 w-4" />
@@ -211,7 +193,7 @@ export default function SupportPage() {
                         <Users className="h-5 w-5 text-purple-500" />
                         <div>
                           <h4 className="font-medium">Telegram</h4>
-                          <p className="text-sm text-muted-foreground">@MoonDexSupport</p>
+                          <p className="text-sm text-muted-foreground">@diptz_zyx</p>
                         </div>
                         <Button size="sm" variant="outline" className="ml-auto bg-transparent">
                           <ExternalLink className="h-4 w-4" />
@@ -283,51 +265,6 @@ export default function SupportPage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="tickets" className="space-y-6">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>My Support Tickets</CardTitle>
-                    <Button>New Ticket</Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {supportTickets.map(ticket => (
-                        <div key={ticket.id} className="border rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{ticket.id}</span>
-                              <Badge
-                                variant={
-                                  ticket.status === 'Open'
-                                    ? 'destructive'
-                                    : ticket.status === 'In Progress'
-                                      ? 'default'
-                                      : 'secondary'
-                                }
-                              >
-                                {ticket.status}
-                              </Badge>
-                              <Badge variant="outline">{ticket.priority}</Badge>
-                            </div>
-                            <Button size="sm" variant="outline">
-                              View
-                            </Button>
-                          </div>
-                          <h4 className="font-medium mb-2">{ticket.subject}</h4>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              Created {ticket.created}
-                            </span>
-                            <span>Last update: {ticket.lastUpdate}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
               <TabsContent value="resources" className="space-y-6">
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   <Card>
@@ -358,8 +295,17 @@ export default function SupportPage() {
                       <p className="text-sm text-muted-foreground mb-4">
                         Technical documentation for developers.
                       </p>
-                      <Button variant="outline" className="w-full bg-transparent">
-                        View Docs
+                      <Button
+                        variant="outline"
+                        className="w-full bg-transparent"
+                        onClick={() =>
+                          window.open(
+                            'https://github.com/mocchaust64/CPMMTransferHook/tree/master',
+                            '_blank'
+                          )
+                        }
+                      >
+                        Program Source Code
                       </Button>
                     </CardContent>
                   </Card>

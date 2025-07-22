@@ -1389,9 +1389,9 @@ export function SwapInterface({
                     </DialogTrigger>
                     <DialogContent className="max-w-lg">
                       <DialogHeader>
-                        <DialogTitle>Chọn Pool từ GitHub</DialogTitle>
+                        <DialogTitle>Select Pool from GitHub</DialogTitle>
                         <DialogDescription className="text-sm text-muted-foreground">
-                          Chọn một pool để sử dụng cho giao dịch swap
+                          Select a pool to use for your swap transaction
                         </DialogDescription>
                       </DialogHeader>
 
@@ -1399,7 +1399,7 @@ export function SwapInterface({
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input
-                            placeholder="Tìm kiếm theo địa chỉ hoặc token..."
+                            placeholder="Search by address or token..."
                             className="pl-9"
                             value={poolSearchTerm}
                             onChange={e => setPoolSearchTerm(e.target.value)}
@@ -1409,7 +1409,7 @@ export function SwapInterface({
                         {enrichingPools && (
                           <div className="flex items-center justify-center text-xs text-muted-foreground bg-muted/30 py-1 px-3 rounded-md">
                             <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                            <span>Đang tải thông tin token...</span>
+                            <span>Loading token information...</span>
                           </div>
                         )}
 
@@ -1417,14 +1417,12 @@ export function SwapInterface({
                           {loadingGithubPools ? (
                             <div className="flex flex-col items-center justify-center h-40">
                               <Loader2 className="h-8 w-8 animate-spin mb-2 text-primary" />
-                              <p className="text-sm text-muted-foreground">
-                                Đang tải danh sách pool...
-                              </p>
+                              <p className="text-sm text-muted-foreground">Loading pool list...</p>
                             </div>
                           ) : githubPools.length === 0 ? (
                             <div className="text-center py-12 border border-dashed rounded-lg">
                               <div className="text-4xl mb-2">😢</div>
-                              <p className="text-muted-foreground">Không tìm thấy pool nào</p>
+                              <p className="text-muted-foreground">No pools found</p>
                             </div>
                           ) : (
                             <div className="space-y-3">
