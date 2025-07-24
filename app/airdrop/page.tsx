@@ -469,7 +469,7 @@ export default function AirdropPage() {
                 <Link href="/">
                   <Button variant="ghost" className="gap-2">
                     <ArrowLeft size={16} />
-                    back to home{' '}
+                    Back to home{' '}
                   </Button>
                 </Link>
                 <h1 className="text-3xl font-bold text-center flex-1">

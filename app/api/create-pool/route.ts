@@ -25,11 +25,9 @@ import { getDetailTokenExtensions } from '@/lib/service/tokenService'
 const SERVER_KEYPAIR_PATH =
   process.env.SERVER_KEYPAIR_PATH || path.join(process.cwd(), 'server-keypair.json')
 
-// Constants
 const TRANSFER_HOOK_PROGRAM_ID = new PublicKey('12BZr6af3s7qf7GGmhBvMd46DWmVNhHfXmCwftfMk1mZ')
 const WSOL_MINT = new PublicKey('So11111111111111111111111111111111111111112')
 
-// Hàm để lấy keypair của server
 function getServerKeypair(): Keypair {
   try {
     const keypairData = fs.readFileSync(SERVER_KEYPAIR_PATH, 'utf-8')
@@ -44,7 +42,6 @@ function getServerKeypair(): Keypair {
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse request body
     const body = await request.json()
     const {
       token0Mint,
@@ -55,11 +52,10 @@ export async function POST(request: NextRequest) {
       initAmount1,
       creatorPublicKey,
       ammConfigAddress,
-      token0HasTransferHook, // Nhận thông tin từ client
-      token1HasTransferHook, // Nhận thông tin từ client
+      token0HasTransferHook,
+      token1HasTransferHook,
     } = body
 
-    // Validate required fields
     if (
       !token0Mint ||
       !token1Mint ||
@@ -73,19 +69,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Kết nối đến Solana
     const connection = new Connection(
       process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com',
       'confirmed'
     )
 
-    // Tạo keypair cho pool
     const poolKeypair = Keypair.generate()
 
-    // Lấy programId từ IDL
     const programId = new PublicKey(idl.address)
 
-    // Tính toán các PDA cần thiết
     const [poolAuthority] = await PublicKey.findProgramAddress(
       [Buffer.from('vault_and_lp_mint_auth_seed')],
       programId
@@ -119,9 +111,8 @@ export async function POST(request: NextRequest) {
       programId
     )
 
-    // Tạo wallet cho server
     const serverKeypair = getServerKeypair()
-    // Sử dụng cách tạo wallet tương tự như trong hooks/usePoolCreation.tsx
+
     const wallet = {
       publicKey: serverKeypair.publicKey,
       signTransaction: async <T extends Transaction | VersionedTransaction>(tx: T): Promise<T> => {
@@ -142,30 +133,23 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    // Tạo provider
     const provider = new AnchorProvider(connection, wallet, { commitment: 'confirmed' })
 
-    // Tạo program - cách mới nhất không cần truyền programId
     const program = new Program(idl, provider) as Program<RaydiumCpSwap>
 
-    // Tạo transaction mới
     const tx = new Transaction()
 
-    // Tăng compute budget - tăng lên để đảm bảo đủ cho transfer hook
     const modifyComputeUnitIx = ComputeBudgetProgram.setComputeUnitLimit({
       units: 800_000,
     })
     tx.add(modifyComputeUnitIx)
 
     try {
-      // Tạo mảng remainingAccounts
       const remainingAccounts = []
 
-      // Xác định loại token (SPL Token hoặc Token-2022) bằng cách sử dụng getDetailTokenExtensions
       const token0Info = await getDetailTokenExtensions(token0Mint)
       const token1Info = await getDetailTokenExtensions(token1Mint)
 
-      // Sử dụng thông tin từ client nếu có, nếu không thì dùng kết quả từ API
       const token0HasHook =
         token0HasTransferHook || (token0Info.isToken2022 && token0Info.transferHook)
       const token1HasHook =
@@ -174,11 +158,7 @@ export async function POST(request: NextRequest) {
       const token0ProgramId = token0Info.isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
       const token1ProgramId = token1Info.isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
 
-      // Tạo danh sách remainingAccounts ĐÚNG THỨ TỰ theo auto-whitelist-hook-pool-test.ts
-
-      // Chỉ thêm tài khoản transfer hook cho token0 nếu nó có transfer hook
       if (token0HasHook) {
-        // Tính PDA cho whitelist và ExtraAccountMetaList cho token0
         const [whitelistPDA_token0] = PublicKey.findProgramAddressSync(
           [Buffer.from('white_list'), new PublicKey(token0Mint).toBuffer()],
           TRANSFER_HOOK_PROGRAM_ID
@@ -188,7 +168,6 @@ export async function POST(request: NextRequest) {
           TRANSFER_HOOK_PROGRAM_ID
         )
 
-        // Thêm tài khoản cho token0 ĐÚNG THỨ TỰ
         remainingAccounts.push(
           { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
           { pubkey: extraAccountMetaListPDA_token0, isWritable: false, isSigner: false },
@@ -196,9 +175,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Chỉ thêm tài khoản transfer hook cho token1 nếu nó có transfer hook
       if (token1HasHook) {
-        // Tính PDA cho whitelist và ExtraAccountMetaList cho token1
         const [whitelistPDA_token1] = PublicKey.findProgramAddressSync(
           [Buffer.from('white_list'), new PublicKey(token1Mint).toBuffer()],
           TRANSFER_HOOK_PROGRAM_ID
@@ -208,7 +185,6 @@ export async function POST(request: NextRequest) {
           TRANSFER_HOOK_PROGRAM_ID
         )
 
-        // Thêm tài khoản cho token1 ĐÚNG THỨ TỰ
         remainingAccounts.push(
           { pubkey: TRANSFER_HOOK_PROGRAM_ID, isWritable: false, isSigner: false },
           { pubkey: extraAccountMetaListPDA_token1, isWritable: false, isSigner: false },
@@ -216,13 +192,12 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // QUAN TRỌNG: Wallet phải được thêm vào cuối cùng
-      remainingAccounts.push(
-        // Wallet với quyền ký - phải ở cuối cùng sau các tài khoản khác
-        { pubkey: new PublicKey(creatorPublicKey), isWritable: true, isSigner: true }
-      )
+      remainingAccounts.push({
+        pubkey: new PublicKey(creatorPublicKey),
+        isWritable: true,
+        isSigner: true,
+      })
 
-      // Tạo LP token address
       const creatorLpTokenAddressPubkey = getAssociatedTokenAddressSync(
         lpMintAddress,
         new PublicKey(creatorPublicKey),
@@ -231,12 +206,11 @@ export async function POST(request: NextRequest) {
         ASSOCIATED_TOKEN_PROGRAM_ID
       )
 
-      // Tạo instruction để khởi tạo pool
       const initializeIx = await program.methods
         .initialize(
           new BN(initAmount0),
           new BN(initAmount1),
-          new BN(Math.floor(Date.now() / 1000) - 3600) // openTime (1 giờ trước)
+          new BN(Math.floor(Date.now() / 1000) - 3600)
         )
         .accountsPartial({
           creator: new PublicKey(creatorPublicKey),
@@ -263,23 +237,17 @@ export async function POST(request: NextRequest) {
         .remainingAccounts(remainingAccounts)
         .instruction()
 
-      // Thêm instruction vào transaction
       tx.add(initializeIx)
 
-      // QUAN TRỌNG: Đặt feePayer trước khi ký
       tx.feePayer = new PublicKey(creatorPublicKey)
 
-      // Lấy recent blockhash
       const { blockhash } = await connection.getLatestBlockhash('confirmed')
       tx.recentBlockhash = blockhash
 
-      // Thêm poolKeypair vào signers và ký transaction
       tx.sign(poolKeypair)
 
-      // Serialize giao dịch đã ký một phần để gửi về client
       const serializedTransaction = tx.serialize({ requireAllSignatures: false }).toString('base64')
 
-      // Thêm thông tin chi tiết hơn về transfer hook và Wrapped SOL
       const poolInfo = {
         poolAddress: poolKeypair.publicKey.toString(),
         lpMintAddress: lpMintAddress.toString(),
@@ -294,8 +262,6 @@ export async function POST(request: NextRequest) {
           isWrappedSol: token0Mint === WSOL_MINT.toString(),
           extensions: token0Info.extensions || [],
           initialAmount: initAmount0,
-          // Không có thông tin về symbol và name trong API route
-          // Sẽ được cập nhật sau khi pool được tạo
         },
         token1: {
           mint: token1Mint,
@@ -305,22 +271,14 @@ export async function POST(request: NextRequest) {
           isWrappedSol: token1Mint === WSOL_MINT.toString(),
           extensions: token1Info.extensions || [],
           initialAmount: initAmount1,
-          // Không có thông tin về symbol và name trong API route
-          // Sẽ được cập nhật sau khi pool được tạo
         },
         createdAt: new Date().toISOString(),
         createdBy: creatorPublicKey,
         network: process.env.SOLANA_NETWORK || 'devnet',
         status: 'active',
-        txid: '', // Sẽ được cập nhật sau khi transaction được xác nhận
+        txid: '',
       }
 
-      // Không upload ngay mà sẽ để client gọi API upload sau khi xác nhận giao dịch thành công
-      // uploadPoolToGithub(poolInfo)
-      //   .then(_result => {})
-      //   .catch(() => {})
-
-      // Trả về giao dịch đã ký một phần và thông tin pool
       return NextResponse.json({
         success: true,
         serializedTransaction,
@@ -329,7 +287,7 @@ export async function POST(request: NextRequest) {
         vault0: vault0.toString(),
         vault1: vault1.toString(),
         creatorLpTokenAddress: creatorLpTokenAddressPubkey.toString(),
-        poolInfo, // Thêm poolInfo để client có thể upload sau khi transaction thành công
+        poolInfo,
       })
     } catch (txError: unknown) {
       return NextResponse.json(

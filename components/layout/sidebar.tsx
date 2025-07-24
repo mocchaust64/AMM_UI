@@ -57,16 +57,12 @@ export function Sidebar() {
             </Link>
           )
         })}
-        <a
-          href="https://tokenextensions.vercel.app/create"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <Link href="/tokens/create">
           <Button variant="ghost" className="w-full justify-start gap-3">
             <PlusSquare className="h-4 w-4" />
             {t('nav.createToken') || 'Create Token'}
           </Button>
-        </a>
+        </Link>
       </nav>
 
       <div className="mt-8 px-2">
