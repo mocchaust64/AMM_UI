@@ -1,4 +1,4 @@
-import { TokenBuilder, TransferFeeToken, Token } from 'solana-token-extension-boost'
+import { TokenBuilder, TransferFeeToken } from 'solana-token-extension-boost'
 import {
   Transaction,
   SystemProgram,
@@ -10,8 +10,7 @@ import {
 } from '@solana/web3.js'
 import { WalletContextState } from '@solana/wallet-adapter-react'
 import { toast } from 'sonner'
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token'
-import { pinJSONToIPFS, pinImageFromBase64, pinFileToIPFS, ipfsToHTTP } from '@/lib/utils/pinata'
+import { pinJSONToIPFS, pinImageFromBase64, ipfsToHTTP } from '@/lib/utils/pinata'
 
 export interface TokenData {
   name: string
@@ -52,12 +51,6 @@ export async function createToken(
     throw new Error('Ví chưa được kết nối')
   }
 
-  // Kiểm tra xem có phải tạo token với transfer hook whitelist không
-  const isTransferHookWhitelist =
-    selectedExtensions.includes('transfer-hook') &&
-    tokenData.extensionOptions?.['transfer-hook']?.['program-id'] ===
-      '12BZr6af3s7qf7GGmhBvMd46DWmVNhHfXmCwftfMk1mZ'
-
   // Biến để lưu thông tin transfer hook
   let transferHookProgramId: PublicKey | null = null
   let isWhitelistHook = false
@@ -80,7 +73,6 @@ export async function createToken(
 
       // Chuyển đổi thành URL HTTP
       imageHttpUrl = ipfsToHTTP(imageUri)
-      console.log('Đã tải lên ảnh thành công:', imageUri, imageHttpUrl)
     } catch (error) {
       console.error('Lỗi khi tải ảnh lên IPFS:', error)
     }
@@ -143,10 +135,8 @@ export async function createToken(
 
     // Chuyển URI thành URL HTTP
     metadataUri = ipfsToHTTP(ipfsUri)
-    console.log('Metadata đã được tải lên thành công:', ipfsUri, metadataUri)
 
     // Log để kiểm tra nội dung metadata
-    console.log('Nội dung metadata:', JSON.stringify(metadataBase, null, 2))
   } catch (error) {
     console.error('Lỗi khi tải metadata lên IPFS:', error)
     // Fallback URL
@@ -219,11 +209,6 @@ export async function createToken(
     mint,
   } = await tokenBuilder.createTokenInstructions(wallet.publicKey)
 
-  // BƯỚC 10: Xác định token program
-  const useToken2022 =
-    selectedExtensions.filter(ext => ext !== 'metadata' && ext !== 'metadata-pointer').length > 0
-  const tokenProgramId = useToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
-
   // BƯỚC 11: Tạo transaction
   toast.loading('Đang chuẩn bị tạo token...', { id: 'creating-token' })
 
@@ -258,8 +243,7 @@ export async function createToken(
       'confirmed'
     )
 
-    console.log('Tạo token thành công với chữ ký:', createSignature)
-    toast.loading('Đã tạo token, đang mint số lượng ban đầu...', { id: 'creating-token' })
+    toast.loading('Token created, minting initial amount...', { id: 'creating-token' })
 
     // Đợi blockchain cập nhật
     await new Promise(resolve => setTimeout(resolve, 2000))
@@ -355,11 +339,6 @@ export async function createToken(
       'confirmed'
     )
 
-    console.log(
-      'Token minting và whitelist initialization thành công với chữ ký:',
-      combinedSignature
-    )
-
     toast.dismiss('creating-token')
     toast.success('Tạo token thành công!')
 
@@ -415,16 +394,13 @@ export async function initializeTransferHookWhitelist(
     let whitelistAccount
     try {
       whitelistAccount = await connection.getAccountInfo(whitelistPDA)
-    } catch (error) {
-      console.log('Lỗi khi kiểm tra tài khoản whitelist:', error)
+    } catch {
       whitelistAccount = null
     }
 
     // Nếu chưa tồn tại, tạo ExtraAccountMetaList và Whitelist
     if (!whitelistAccount) {
       try {
-        console.log('Đang tạo whitelist và extra account meta list...')
-
         // Tạo instruction để khởi tạo ExtraAccountMetaList
         const initializeDiscriminator = Buffer.from([43, 34, 13, 49, 167, 88, 235, 235])
 
@@ -465,7 +441,6 @@ export async function initializeTransferHookWhitelist(
 
         toast.dismiss('init-whitelist')
         toast.success('Khởi tạo whitelist thành công!')
-        console.log('ExtraAccountMetaList đã khởi tạo với chữ ký:', signature)
 
         // Đợi một chút để đảm bảo blockchain đã cập nhật
         await new Promise(resolve => setTimeout(resolve, 2000))
@@ -482,8 +457,6 @@ export async function initializeTransferHookWhitelist(
 
     // Thêm địa chỉ người tạo vào whitelist
     try {
-      console.log('Đang thêm địa chỉ người tạo vào whitelist...')
-
       const addToWhitelistDiscriminator = Buffer.from([157, 211, 52, 54, 144, 81, 5, 55])
 
       const addToWhitelistIx = new TransactionInstruction({
@@ -521,7 +494,6 @@ export async function initializeTransferHookWhitelist(
 
       toast.dismiss('add-to-whitelist')
       toast.success('Địa chỉ đã được thêm vào whitelist!')
-      console.log('Địa chỉ đã được thêm vào whitelist với chữ ký:', addSignature)
 
       return addSignature
     } catch (error: any) {
@@ -574,7 +546,6 @@ export async function addAddressToWhitelist(
     }
 
     // Thêm địa chỉ mới vào whitelist
-    console.log('Đang thêm địa chỉ mới vào whitelist...')
 
     const addToWhitelistDiscriminator = Buffer.from([157, 211, 52, 54, 144, 81, 5, 55])
 
@@ -613,7 +584,6 @@ export async function addAddressToWhitelist(
 
     toast.dismiss('add-address-to-whitelist')
     toast.success('Địa chỉ đã được thêm vào whitelist!')
-    console.log('Địa chỉ đã được thêm vào whitelist với chữ ký:', addSignature)
 
     return addSignature
   } catch (error: any) {

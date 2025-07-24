@@ -38,8 +38,6 @@ export async function pinJSONToIPFS(metadata: Record<string, any>): Promise<stri
       },
     })
 
-    console.log('Pinata response:', response.data)
-
     // Trả về URI dạng IPFS protocol
     return `ipfs://${response.data.IpfsHash}`
   } catch (error: any) {
@@ -106,7 +104,7 @@ export async function pinImageFromBase64(base64Image: string): Promise<string> {
     formData.append('pinataOptions', pinataOptions)
 
     // Gọi API Pinata để tải file lên
-    console.log('Đang tải ảnh lên IPFS qua Pinata...')
+
     const response = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', formData, {
       headers: {
         Authorization: `Bearer ${PINATA_JWT}`,
@@ -114,8 +112,6 @@ export async function pinImageFromBase64(base64Image: string): Promise<string> {
       maxBodyLength: Infinity,
       maxContentLength: Infinity,
     })
-
-    console.log('Pinata image upload response:', response.data)
 
     if (!response.data || !response.data.IpfsHash) {
       throw new Error('Pinata did not return IPFS hash')

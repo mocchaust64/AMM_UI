@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Coins, Check, AlertCircle, ArrowLeft, ExternalLink, ArrowUpDown, Info } from 'lucide-react'
+import { Coins, Check, AlertCircle, ArrowLeft, ExternalLink, Info } from 'lucide-react'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { toast } from 'sonner'
 import { CommonLayout } from '@/components/common-layout'
-import { PublicKey } from '@solana/web3.js'
 import { createToken } from '@/lib/services/token-service'
 import {
   Dialog,
@@ -21,25 +20,20 @@ import {
 } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
-// Props for TokenCreationSuccessDialog
 interface TokenCreationSuccessDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   signature: string
   tokenMint: string
-  metadataUri: string
   tokenData: any
 }
 
-// Component Dialog displaying transaction success information
 function TokenCreationSuccessDialog(props: TokenCreationSuccessDialogProps) {
-  const { open, onOpenChange, signature, tokenMint, metadataUri, tokenData } = props
+  const { open, onOpenChange, signature, tokenMint, tokenData } = props
 
-  // URL to view transaction on explorer
   const solscanUrl = `https://solscan.io/tx/${signature}?cluster=devnet`
   const tokenUrl = `https://solscan.io/token/${tokenMint}?cluster=devnet`
 
-  // Function to copy to clipboard
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text).then(
       () => {
@@ -274,22 +268,13 @@ export default function ReviewToken() {
   const [isCreating, setIsCreating] = useState(false)
   const [creationError, setCreationError] = useState<string | null>(null)
 
-  // State for result dialog
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [createdTokenMint, setCreatedTokenMint] = useState('')
   const [transactionSignature, setTransactionSignature] = useState('')
-  const [metadataUri, setMetadataUri] = useState('')
 
   const [tokenData, setTokenData] = useState<any>(null)
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>([])
 
-  // Check if using transfer hook whitelist
-  const isUsingWhitelistHook =
-    selectedExtensions.includes('transfer-hook') &&
-    tokenData?.extensionOptions?.['transfer-hook']?.['program-id'] ===
-      '12BZr6af3s7qf7GGmhBvMd46DWmVNhHfXmCwftfMk1mZ'
-
-  // Load saved token data
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') {
@@ -299,7 +284,6 @@ export default function ReviewToken() {
           setTokenData(parsedData)
           setSelectedExtensions(parsedData.selectedExtensions || [])
         } else {
-          // No data found, redirect back to creation page
           router.push('/tokens/create')
         }
       }
@@ -311,7 +295,6 @@ export default function ReviewToken() {
     }
   }, [router])
 
-  // Handle confirmation to create token
   const handleConfirmCreate = async () => {
     if (!wallet.connected) {
       toast.error('Please connect your wallet to create a token')
@@ -322,7 +305,6 @@ export default function ReviewToken() {
     setCreationError(null)
 
     try {
-      // Get token data from state
       const tokenDataForCreation = {
         name: tokenData.name,
         symbol: tokenData.symbol,
@@ -337,18 +319,13 @@ export default function ReviewToken() {
         discordUrl: tokenData.discordUrl || '',
       }
 
-      // Call create token function from service
       const result = await createToken(connection, wallet, tokenDataForCreation, selectedExtensions)
 
-      // Set results
       setCreatedTokenMint(result.mint)
       setTransactionSignature(result.signature)
-      setMetadataUri(result.metadataUri || '')
 
-      // Show success dialog
       setShowSuccessDialog(true)
 
-      // Clear localStorage
       localStorage.removeItem('tokenData')
     } catch (error: any) {
       console.error('Error creating token:', error)
@@ -363,11 +340,6 @@ export default function ReviewToken() {
     router.push('/tokens/create')
   }
 
-  const goToTokenList = () => {
-    router.push('/tokens')
-  }
-
-  // Show loading or error state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -393,7 +365,6 @@ export default function ReviewToken() {
     )
   }
 
-  // Review page
   return (
     <CommonLayout>
       <div className="max-w-3xl mx-auto py-8 px-4">
@@ -554,7 +525,6 @@ export default function ReviewToken() {
           onOpenChange={setShowSuccessDialog}
           signature={transactionSignature}
           tokenMint={createdTokenMint}
-          metadataUri={metadataUri}
           tokenData={tokenData}
         />
       </div>
