@@ -132,7 +132,6 @@ export default function CreateToken() {
           image: file,
           imageUrl,
         }))
-        toast.success('Image uploaded successfully')
       } else {
         toast.error('Failed to upload image')
       }
