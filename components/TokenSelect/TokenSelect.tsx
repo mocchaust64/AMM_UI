@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useCallback } from 'react'
-import { Search, Loader2 } from 'lucide-react'
+import { Search, Loader2, RefreshCw } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -20,6 +20,8 @@ import { GithubPoolService, GithubTokenInfo } from '@/lib/service/githubPoolServ
 import { TokenData } from '@/hooks/useWalletTokens'
 import { Skeleton as _Skeleton } from '@/components/ui/skeleton'
 import { Connection } from '@solana/web3.js'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 // Định nghĩa kiểu dữ liệu cho token trong context của component
 interface ExtendedTokenData extends TokenData {
@@ -68,7 +70,7 @@ export function TokenSelect({
   includeWrappedSol = false,
   forPoolCreation = false,
 }: TokenSelectProps) {
-  const { tokens, loading } = useWalletTokens({
+  const { tokens, loading, refreshTokens } = useWalletTokens({
     includeSol: forPoolCreation ? false : includeSol,
     includeWrappedSol: forPoolCreation || includeWrappedSol,
   })
@@ -78,6 +80,7 @@ export function TokenSelect({
   const [isLoadingBasicInfo, setIsLoadingBasicInfo] = useState(false)
   const [isLoadingExtensions, setIsLoadingExtensions] = useState(false)
   const [visibleTokens, setVisibleTokens] = useState<string[]>([])
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Tải thông tin cơ bản trước (tên, biểu tượng)
   useEffect(() => {
@@ -419,6 +422,34 @@ export function TokenSelect({
     )
   }
 
+  // Hàm xử lý refresh token list
+  const handleRefreshTokens = () => {
+    try {
+      setIsRefreshing(true)
+
+      // Xóa cache
+      localStorage.removeItem('token_basic_info_cache')
+      localStorage.removeItem('token_extensions_cache')
+
+      // Reset state
+      setTokenMetadata({})
+      setTokenExtensions({})
+
+      // Refresh danh sách token từ hook
+      refreshTokens(true)
+
+      // Hiển thị thông báo thành công sau một khoảng thời gian ngắn
+      setTimeout(() => {
+        toast.success('Token list refreshed successfully')
+        setIsRefreshing(false)
+      }, 1000)
+    } catch (error) {
+      console.error('Error refreshing tokens:', error)
+      toast.error('Failed to refresh token list')
+      setIsRefreshing(false)
+    }
+  }
+
   return (
     <Select value={value} onValueChange={handleSelect} disabled={disabled}>
       <SelectTrigger className="w-full">
@@ -446,18 +477,33 @@ export function TokenSelect({
 
       <SelectContent>
         <div className="p-2">
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search token..."
-              className="pl-9"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
+          <div className="flex items-center gap-2 mb-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search token..."
+                className="pl-9"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 shrink-0"
+              onClick={handleRefreshTokens}
+              disabled={isRefreshing || loading}
+            >
+              {isRefreshing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
           </div>
 
           <ScrollArea className="h-60 custom-scroll">
-            {loading || isLoadingBasicInfo || isLoadingExtensions ? (
+            {loading || isLoadingBasicInfo ? (
               <div className="py-6 flex flex-col items-center justify-center gap-2">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 <p className="text-sm text-muted-foreground">Loading tokens...</p>

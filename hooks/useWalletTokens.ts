@@ -267,170 +267,178 @@ export function useWalletTokens(
   )
 
   // Lấy danh sách token của ví
-  const fetchTokens = useCallback(async () => {
-    if (!publicKey) {
-      setTokens([])
-      setLoading(false)
-      return
-    }
-
-    // Kiểm tra cache nếu không phải force refresh
-    if (!options.forceRefresh) {
-      const cachedTokens = getTokensFromCache()
-      if (cachedTokens) {
-        setTokens(cachedTokens)
+  const fetchTokens = useCallback(
+    async (forceRefresh = false) => {
+      if (!publicKey) {
+        setTokens([])
         setLoading(false)
         return
       }
-    }
 
-    setLoading(true)
-    setError(null)
-
-    try {
-      // Lấy danh sách token list để làm nguồn thông tin metadata
-      const tokenList = await loadTokenList()
-
-      // Lấy danh sách token accounts từ ví người dùng
-      const tokenAccounts = await getExistingTokenAccounts(publicKey)
-
-      // Chuyển đổi thành danh sách token
-      const tokenPromises = Array.from(tokenAccounts.values()).map(async account => {
-        // Tìm metadata từ token list
-        const tokenInfo = tokenList[account.mint]
-
-        // Thông tin token mặc định
-        let tokenName =
-          tokenInfo?.name || `Token ${account.mint.slice(0, 6)}...${account.mint.slice(-4)}`
-        let tokenSymbol = tokenInfo?.symbol || account.mint.slice(0, 4).toUpperCase()
-        let tokenImage = tokenInfo?.logoURI
-
-        // Kiểm tra nếu là Wrapped SOL
-        if (account.mint === WSOL_MINT) {
-          tokenName = 'Wrapped SOL'
-          tokenSymbol = 'wSOL'
-          tokenImage =
-            'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
+      // Kiểm tra cache nếu không phải force refresh
+      if (!forceRefresh && !options.forceRefresh) {
+        const cachedTokens = getTokensFromCache()
+        if (cachedTokens) {
+          setTokens(cachedTokens)
+          setLoading(false)
+          return
         }
+      }
 
-        // Chỉ tìm metadata cho token-2022, bỏ qua SPL token thông thường
-        if (account.isToken2022 && (!tokenInfo || !tokenImage)) {
-          try {
-            const mintPublicKey = new PublicKey(account.mint)
+      setLoading(true)
+      setError(null)
 
-            // Lấy thông tin mint để kiểm tra token-2022
-            const mintInfo = await getMint(
-              connection,
-              mintPublicKey,
-              undefined,
-              TOKEN_2022_PROGRAM_ID
-            )
+      try {
+        // Lấy danh sách token list để làm nguồn thông tin metadata
+        const tokenList = await loadTokenList(forceRefresh)
 
-            // Nếu là token-2022, thử lấy metadata
-            if (mintInfo.mintAuthority) {
-              const metadata = await fetchTokenMetadata(account.mint)
-              if (metadata) {
-                tokenName = metadata.name || tokenName
-                tokenSymbol = metadata.symbol || tokenSymbol
-                tokenImage = metadata.logoURI || tokenImage
+        // Lấy danh sách token accounts từ ví người dùng
+        const tokenAccounts = await getExistingTokenAccounts(publicKey)
+
+        // Chuyển đổi thành danh sách token
+        const tokenPromises = Array.from(tokenAccounts.values()).map(async account => {
+          // Tìm metadata từ token list
+          const tokenInfo = tokenList[account.mint]
+
+          // Thông tin token mặc định
+          let tokenName =
+            tokenInfo?.name || `Token ${account.mint.slice(0, 6)}...${account.mint.slice(-4)}`
+          let tokenSymbol = tokenInfo?.symbol || account.mint.slice(0, 4).toUpperCase()
+          let tokenImage = tokenInfo?.logoURI
+
+          // Kiểm tra nếu là Wrapped SOL
+          if (account.mint === WSOL_MINT) {
+            tokenName = 'Wrapped SOL'
+            tokenSymbol = 'wSOL'
+            tokenImage =
+              'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png'
+          }
+
+          // Chỉ tìm metadata cho token-2022, bỏ qua SPL token thông thường
+          if (account.isToken2022 && (!tokenInfo || !tokenImage)) {
+            try {
+              const mintPublicKey = new PublicKey(account.mint)
+
+              // Lấy thông tin mint để kiểm tra token-2022
+              const mintInfo = await getMint(
+                connection,
+                mintPublicKey,
+                undefined,
+                TOKEN_2022_PROGRAM_ID
+              )
+
+              // Nếu là token-2022, thử lấy metadata
+              if (mintInfo.mintAuthority) {
+                const metadata = await fetchTokenMetadata(account.mint)
+                if (metadata) {
+                  tokenName = metadata.name || tokenName
+                  tokenSymbol = metadata.symbol || tokenSymbol
+                  tokenImage = metadata.logoURI || tokenImage
+                }
               }
+            } catch (error) {
+              console.error(`Error fetching mint info for ${account.mint}:`, error)
             }
-          } catch (error) {
-            console.error(`Error fetching mint info for ${account.mint}:`, error)
+          }
+
+          return {
+            mint: account.mint,
+            symbol: tokenSymbol,
+            name: tokenName,
+            icon: tokenImage,
+            balance: account.balance,
+            decimals: account.decimals,
+            address: account.address,
+            isToken2022: account.isToken2022,
+          }
+        })
+
+        // Đợi tất cả promises hoàn thành
+        const tokensData = await Promise.all(tokenPromises)
+
+        // Lấy số dư SOL
+        const solBalance = await connection.getBalance(publicKey)
+
+        // Tạo token SOL
+        const solToken: TokenData = {
+          mint: 'SOL',
+          symbol: 'SOL',
+          name: 'Solana',
+          icon: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
+          balance: solBalance / 1e9, // Chuyển đổi lamports sang SOL
+          decimals: 9,
+          address: publicKey.toString(), // SOL address là địa chỉ ví
+        }
+
+        // Kiểm tra wSOL account
+        let wrappedSolToken: TokenData | null = null
+
+        if (options.includeWrappedSol) {
+          // Lấy WrappedSOL token từ danh sách token nếu đã có
+          wrappedSolToken = tokensData.find(token => token.mint === WSOL_MINT) || null
+
+          // Nếu chưa có, tạo mới với balance = 0
+          if (!wrappedSolToken) {
+            wrappedSolToken = {
+              mint: WSOL_MINT,
+              symbol: 'wSOL',
+              name: 'Wrapped SOL',
+              icon: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
+              balance: 0,
+              decimals: 9,
+              address: '', // Sẽ được tạo khi cần
+            }
           }
         }
 
-        return {
-          mint: account.mint,
-          symbol: tokenSymbol,
-          name: tokenName,
-          icon: tokenImage,
-          balance: account.balance,
-          decimals: account.decimals,
-          address: account.address,
-          isToken2022: account.isToken2022,
+        // Thêm token vào kết quả cuối cùng tùy thuộc vào options
+        const finalTokens: TokenData[] = [...tokensData]
+
+        if (options.includeSol) {
+          finalTokens.unshift(solToken) // Thêm SOL vào đầu danh sách
         }
-      })
 
-      // Đợi tất cả promises hoàn thành
-      const tokensData = await Promise.all(tokenPromises)
-
-      // Lấy số dư SOL
-      const solBalance = await connection.getBalance(publicKey)
-
-      // Tạo token SOL
-      const solToken: TokenData = {
-        mint: 'SOL',
-        symbol: 'SOL',
-        name: 'Solana',
-        icon: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
-        balance: solBalance / 1e9, // Chuyển đổi lamports sang SOL
-        decimals: 9,
-        address: publicKey.toString(), // SOL address là địa chỉ ví
-      }
-
-      // Kiểm tra wSOL account
-      let wrappedSolToken: TokenData | null = null
-
-      if (options.includeWrappedSol) {
-        // Lấy WrappedSOL token từ danh sách token nếu đã có
-        wrappedSolToken = tokensData.find(token => token.mint === WSOL_MINT) || null
-
-        // Nếu chưa có, tạo mới với balance = 0
-        if (!wrappedSolToken) {
-          wrappedSolToken = {
-            mint: WSOL_MINT,
-            symbol: 'wSOL',
-            name: 'Wrapped SOL',
-            icon: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
-            balance: 0,
-            decimals: 9,
-            address: '', // Sẽ được tạo khi cần
-          }
+        if (
+          options.includeWrappedSol &&
+          wrappedSolToken &&
+          !finalTokens.some(t => t.mint === WSOL_MINT)
+        ) {
+          finalTokens.unshift(wrappedSolToken) // Thêm wSOL vào đầu danh sách nếu chưa có
         }
+
+        setTokens(finalTokens)
+
+        // Lưu kết quả vào cache
+        saveTokensToCache(finalTokens)
+      } catch (err: any) {
+        console.error('Error fetching wallet tokens:', err)
+        setError(err.message || 'Failed to fetch wallet tokens')
+      } finally {
+        setLoading(false)
       }
-
-      // Thêm token vào kết quả cuối cùng tùy thuộc vào options
-      const finalTokens: TokenData[] = [...tokensData]
-
-      if (options.includeSol) {
-        finalTokens.unshift(solToken) // Thêm SOL vào đầu danh sách
-      }
-
-      if (
-        options.includeWrappedSol &&
-        wrappedSolToken &&
-        !finalTokens.some(t => t.mint === WSOL_MINT)
-      ) {
-        finalTokens.unshift(wrappedSolToken) // Thêm wSOL vào đầu danh sách nếu chưa có
-      }
-
-      setTokens(finalTokens)
-
-      // Lưu kết quả vào cache
-      saveTokensToCache(finalTokens)
-    } catch (err: any) {
-      console.error('Error fetching wallet tokens:', err)
-      setError(err.message || 'Failed to fetch wallet tokens')
-    } finally {
-      setLoading(false)
-    }
-  }, [
-    publicKey,
-    connection,
-    options.includeSol,
-    options.includeWrappedSol,
-    options.forceRefresh,
-    loadTokenList,
-    getExistingTokenAccounts,
-    fetchTokenMetadata,
-    getTokensFromCache,
-    saveTokensToCache,
-  ])
+    },
+    [
+      publicKey,
+      connection,
+      options.includeSol,
+      options.includeWrappedSol,
+      options.forceRefresh,
+      loadTokenList,
+      getExistingTokenAccounts,
+      fetchTokenMetadata,
+      getTokensFromCache,
+      saveTokensToCache,
+    ]
+  )
 
   useEffect(() => {
     fetchTokens()
   }, [fetchTokens])
 
-  return { tokens, loading, error, refreshTokens: () => fetchTokens() }
+  return {
+    tokens,
+    loading,
+    error,
+    refreshTokens: (forceRefresh = false) => fetchTokens(forceRefresh),
+  }
 }
