@@ -1643,16 +1643,16 @@ export function SwapInterface({
                 {swapping ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t('swap.swapping')}
+                    Swapping ...
                   </>
                 ) : !wallet.publicKey ? (
-                  t('swap.connect_wallet')
+                  'Connect wallet'
                 ) : !fromToken || !toToken ? (
-                  t('swap.select_tokens')
+                  'Select token'
                 ) : !fromAmount || Number(fromAmount) <= 0 ? (
-                  t('swap.enter_amount')
+                  'Enter amount'
                 ) : (
-                  t('swap.swap')
+                  'Swap'
                 )}
               </Button>
 

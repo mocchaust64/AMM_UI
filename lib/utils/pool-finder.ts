@@ -265,12 +265,9 @@ export class PoolFinder {
     if (outputAmount > outBalance * 0.99) {
       throw new Error('Transaction would drain too much liquidity from pool')
     }
-
-    // Tỷ giá: 1 token đầu vào = ? token đầu ra
     const rate = outputAmount / amount
 
-    // Số lượng tối thiểu nhận được (trừ đi 0.5% slippage)
-    const minimumReceived = outputAmount * 0.995
+    const minimumReceived = outputAmount * 0.05
 
     return {
       outputAmount,
