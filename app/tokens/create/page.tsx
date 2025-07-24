@@ -10,26 +10,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea'
 import {
   Coins,
-  Eye,
   FileText,
-  Upload,
   Info,
   Webhook,
   ArrowLeft,
   ArrowRight,
-  CheckCircle,
   Image as ImageIcon,
   X,
-  AlertCircle,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { uploadImageAndGetUrl } from '@/lib/utils/pinata'
 
-// Define token interface
 interface TokenData {
   name: string
   symbol: string
@@ -47,8 +41,6 @@ interface TokenData {
 }
 
 export default function CreateToken() {
-  const { connection } = useConnection()
-  const wallet = useWallet()
   const router = useRouter()
 
   const [isLoading, setIsLoading] = useState(true)
@@ -89,14 +81,11 @@ export default function CreateToken() {
   })
 
   useEffect(() => {
-    // Simulating data load
     setTimeout(() => setIsLoading(false), 500)
   }, [])
 
-  // Handle extension selection
   const handleExtensionChange = (extension: string) => {
     if (extension === 'metadata' || extension === 'metadata-pointer') {
-      // These are required and can't be toggled off
       return
     }
 
@@ -107,13 +96,11 @@ export default function CreateToken() {
     }
   }
 
-  // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setTokenData(prev => ({ ...prev, [name]: value }))
   }
 
-  // Handle image upload
   const handleImageUpload = async (file: File) => {
     if (!file) return
 
@@ -127,7 +114,6 @@ export default function CreateToken() {
       setUploadingImage(true)
       setFormErrors(prev => ({ ...prev, image: undefined }))
 
-      // Create a base64 preview
       const reader = new FileReader()
       reader.onload = e => {
         setTokenData(prev => ({
@@ -138,7 +124,6 @@ export default function CreateToken() {
       }
       reader.readAsDataURL(file)
 
-      // Upload to Pinata
       const imageUrl = await uploadImageAndGetUrl(file)
 
       if (imageUrl) {
@@ -159,7 +144,6 @@ export default function CreateToken() {
     }
   }
 
-  // Handle extension option changes
   const handleExtensionOptionChange = (
     extension: string,
     optionId: string,
@@ -177,7 +161,6 @@ export default function CreateToken() {
     }))
   }
 
-  // Validate token data
   const validateTokenData = (): boolean => {
     const errors: Record<string, Record<string, string>> = {}
     const basicErrors: Record<string, string> = {}
