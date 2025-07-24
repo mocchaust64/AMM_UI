@@ -29,7 +29,6 @@ import { PoolFinder } from '@/lib/utils/pool-finder'
 import { PublicKey } from '@solana/web3.js'
 import { useAnchorProvider } from '@/hooks/useAnchorProvider'
 
-// Định nghĩa interface cho thông tin token
 interface TokenInfo {
   isToken2022?: boolean
   transferHook?: {

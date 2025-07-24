@@ -22,6 +22,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Transaction, VersionedTransaction } from '@solana/web3.js'
 import { Idl } from '@coral-xyz/anchor'
 import { RaydiumCpSwap } from '@/idl/types/raydium_cp_swap'
+import { useWalletTokens } from '@/hooks/useWalletTokens'
 
 // Define data type for pool
 interface Pool {
@@ -39,13 +40,20 @@ interface Pool {
 export default function LiquidityPage() {
   const [createPoolOpen, setCreatePoolOpen] = useState(false)
   const [myPools, setMyPools] = useState<Pool[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
   const [dismissAlert, setDismissAlert] = useState(false)
   const [activeTab, setActiveTab] = useState('my-pools')
   const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
+  const [poolsLoaded, setPoolsLoaded] = useState(false)
+
+  // Prefetch token list for select component
+  const { loading: loadingTokens } = useWalletTokens({
+    includeSol: true,
+    includeWrappedSol: true,
+  })
 
   const POOLS_PER_PAGE = 9
 
@@ -92,19 +100,27 @@ export default function LiquidityPage() {
     if (dismissed) {
       setDismissAlert(true)
     }
-  }, [])
 
-  // Save dismissed state when alert is closed
-  const handleDismissAlert = () => {
-    setDismissAlert(true)
-    localStorage.setItem('dismissed-token-alert', 'true')
-  }
+    // Check for cached pools
+    const cachedData = getPoolsFromCache()
+    if (cachedData) {
+      setMyPools(cachedData.pools)
+      setLastUpdated(cachedData.lastUpdated)
+      setPoolsLoaded(true)
+    }
+  }, [])
 
   // Reset page when changing tabs
   useEffect(() => {
     setCurrentPage(1)
     setSearchTerm('')
   }, [activeTab])
+
+  // Save dismissed state when alert is closed
+  const handleDismissAlert = () => {
+    setDismissAlert(true)
+    localStorage.setItem('dismissed-token-alert', 'true')
+  }
 
   // Function to load pool data
   const loadUserPools = useCallback(
@@ -128,6 +144,7 @@ export default function LiquidityPage() {
           setMyPools(cachedData.pools)
           setLastUpdated(cachedData.lastUpdated)
           setLoading(false)
+          setPoolsLoaded(true)
           return
         }
       }
@@ -173,6 +190,7 @@ export default function LiquidityPage() {
 
         setMyPools(userPoolsForUI)
         setLastUpdated(Date.now())
+        setPoolsLoaded(true)
 
         // Save to cache
         savePoolsToCache(userPoolsForUI)
@@ -185,11 +203,6 @@ export default function LiquidityPage() {
     },
     [publicKey, connection, setMyPools, setLoading, setRefreshing, setLastUpdated]
   )
-
-  // Load pools when component mounts
-  useEffect(() => {
-    loadUserPools()
-  }, [loadUserPools])
 
   const formatLastUpdated = () => {
     if (!lastUpdated) return ''
@@ -341,6 +354,26 @@ export default function LiquidityPage() {
                     <div className="py-12 text-center">
                       <Loader2 className="mx-auto h-6 w-6 animate-spin mb-2" />
                       <p className="text-sm text-muted-foreground">Loading pools...</p>
+                    </div>
+                  ) : !poolsLoaded ? (
+                    <div className="py-12 text-center">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Click the button below to load your pools
+                      </p>
+                      <Button
+                        onClick={() => loadUserPools()}
+                        className="mx-auto"
+                        disabled={!publicKey}
+                      >
+                        {publicKey ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Load My Pools
+                          </>
+                        ) : (
+                          'Connect wallet to view pools'
+                        )}
+                      </Button>
                     </div>
                   ) : filteredPools.length === 0 ? (
                     <div className="py-12 text-center">

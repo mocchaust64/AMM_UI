@@ -18,6 +18,20 @@ const tokenMetadataCache: Record<string, any> = {}
 // Cache cho thông tin extensions của token
 const tokenExtensionsCache: Record<string, any> = {}
 
+// Memory cache cho thông tin cơ bản của token
+const tokenBasicInfoMemoryCache: Map<
+  string,
+  {
+    name: string
+    symbol: string
+    icon: string
+    timestamp: number
+  }
+> = new Map()
+
+// Thời gian cache
+const CACHE_TTL = 24 * 60 * 60 * 1000 // 24 giờ
+
 export class TokenService {
   private static tokenList: TokenInfo[] = []
   private static isInitialized = false
@@ -151,7 +165,6 @@ export class TokenService {
     return this.tokenList
   }
 
-  // Hàm lấy icon và tên của token từ mint address
   static async getTokenIconAndName(
     mintAddress: string,
     connection?: Connection
@@ -160,135 +173,142 @@ export class TokenService {
     symbol: string
     icon: string
   }> {
+    // Kiểm tra memory cache trước
+    const memoryCacheEntry = tokenBasicInfoMemoryCache.get(mintAddress)
+    if (memoryCacheEntry && Date.now() - memoryCacheEntry.timestamp < CACHE_TTL) {
+      const { name, symbol, icon } = memoryCacheEntry
+      return { name, symbol, icon }
+    }
+
+    // Kiểm tra localStorage cache
+    try {
+      const cacheKey = `token_basic_info_${mintAddress}`
+      const cachedData = localStorage.getItem(cacheKey)
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData)
+        if (Date.now() - parsed.timestamp < CACHE_TTL) {
+          // Lưu vào memory cache để truy cập nhanh hơn lần sau
+          tokenBasicInfoMemoryCache.set(mintAddress, {
+            ...parsed.data,
+            timestamp: parsed.timestamp,
+          })
+          return parsed.data
+        }
+      }
+    } catch (error) {
+      // Xử lý lỗi im lặng
+    }
+
+    // Khởi tạo connection nếu chưa cung cấp
+    if (!connection) {
+      connection = new Connection(
+        process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com',
+        'confirmed'
+      )
+    }
+
     if (!this.isInitialized) {
       await this.initialize()
     }
 
-    // Tìm token trong danh sách có sẵn
-    const tokenInfo = this.tokenList.find(token => token.address === mintAddress)
-
-    if (tokenInfo) {
-      return {
-        name: tokenInfo.name,
-        symbol: tokenInfo.symbol,
-        icon: tokenInfo.logoURI || '/placeholder-logo.svg',
-      }
-    }
-
-    // Nếu không tìm thấy và có connection, thử lấy metadata từ token
-    if (connection) {
-      try {
-        const mintPublicKey = new PublicKey(mintAddress)
-
-        // Xác định loại token (SPL Token hoặc Token-2022)
-        let isToken2022 = false
-        let validToken = false
-        let mintInfo
-
-        // Thử với TOKEN_PROGRAM_ID trước (SPL Token)
-        try {
-          mintInfo = await getMint(connection, mintPublicKey, undefined, TOKEN_PROGRAM_ID)
-          isToken2022 = false
-          validToken = true
-        } catch {
-          // Không phải SPL token tiêu chuẩn, thử với Token-2022
-        }
-
-        // Nếu không phải SPL token, thử với TOKEN_2022_PROGRAM_ID
-        if (!validToken) {
-          try {
-            mintInfo = await getMint(connection, mintPublicKey, undefined, TOKEN_2022_PROGRAM_ID)
-            isToken2022 = true
-            validToken = true
-          } catch {
-            // Không phải Token-2022, sử dụng giá trị mặc định
-          }
-        }
-
-        // Nếu không phải token hợp lệ, trả về thông tin mặc định
-        if (!validToken) {
-          return {
-            name: 'Unknown Token',
-            symbol: mintAddress.slice(0, 4).toUpperCase(),
-            icon: '/placeholder-logo.svg',
-          }
-        }
-
-        // Thử lấy metadata sử dụng phương pháp Metaplex trước
-        try {
-          const metaplexInfo = await this.getMetaplexTokenMetadata(mintAddress, connection)
-          if (metaplexInfo) {
-            return {
-              name: metaplexInfo.name,
-              symbol: metaplexInfo.symbol,
-              icon: metaplexInfo.image || '/placeholder-logo.svg',
-            }
-          }
-        } catch {
-          // Xử lý im lặng lỗi khi lấy metadata từ Metaplex
-        }
-
-        // Nếu không lấy được qua Metaplex, thử phương pháp spl-token tiêu chuẩn
-        let tokenMetadata = null
-        try {
-          tokenMetadata = await getTokenMetadata(
-            connection,
-            mintPublicKey,
-            undefined,
-            isToken2022 ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID
-          )
-        } catch {
-          // Xử lý im lặng lỗi khi lấy metadata từ token program
-        }
-
-        if (tokenMetadata) {
-          let metadataName = tokenMetadata.name || 'Unknown Token'
-          let metadataSymbol = tokenMetadata.symbol || 'UNKNOWN'
-          let metadataImage = '/placeholder-logo.svg'
-
-          // Nếu có URI, tải thêm thông tin hình ảnh
-          if (tokenMetadata.uri) {
-            try {
-              const response = await fetch(tokenMetadata.uri)
-              if (response.ok) {
-                const metadataJson = await response.json()
-
-                // Sử dụng dữ liệu từ URI nếu có
-                metadataName = metadataJson.name || metadataName
-                metadataSymbol = metadataJson.symbol || metadataSymbol
-                metadataImage = metadataJson.image || metadataImage
-              }
-            } catch {
-              // Xử lý im lặng lỗi khi tải URI
-            }
-          }
-
-          return {
-            name: metadataName,
-            symbol: metadataSymbol,
-            icon: metadataImage,
-          }
-        }
-
-        // Nếu vẫn không có metadata, trả về thông tin cơ bản từ mint
-        if (mintInfo) {
-          return {
-            name: `Token ${mintAddress.slice(0, 6)}...${mintAddress.slice(-4)}`,
-            symbol: mintAddress.slice(0, 4).toUpperCase(),
-            icon: '/placeholder-logo.svg',
-          }
-        }
-      } catch {
-        // Xử lý im lặng lỗi không xác định
-      }
-    }
-
-    // Fallback khi không tìm thấy thông tin
-    return {
-      name: 'Unknown Token',
+    // Kết quả mặc định
+    let result = {
+      name: mintAddress.slice(0, 4) + '...' + mintAddress.slice(-4),
       symbol: mintAddress.slice(0, 4).toUpperCase(),
-      icon: '/placeholder-logo.svg',
+      icon: '',
     }
+
+    try {
+      // Tìm trong danh sách token
+      const tokenFromList = this.tokenList.find(token => token.address === mintAddress)
+
+      if (tokenFromList) {
+        result = {
+          name: tokenFromList.name,
+          symbol: tokenFromList.symbol,
+          icon: tokenFromList.logoURI || '',
+        }
+      } else {
+        // Nếu không tìm thấy trong danh sách token, thử lấy từ Metaplex
+        try {
+          const metaplex = new Metaplex(connection)
+          const nft = await metaplex.nfts().findByMint({ mintAddress: new PublicKey(mintAddress) })
+
+          if (nft.json) {
+            result = {
+              name: nft.json.name || result.name,
+              symbol: nft.json.symbol || result.symbol,
+              icon: nft.json.image || result.icon,
+            }
+          } else if (nft.name) {
+            result = {
+              name: nft.name,
+              symbol: nft.symbol || result.symbol,
+              icon: result.icon,
+            }
+          }
+        } catch (metaplexError) {
+          handleSilentError(metaplexError, 'Lỗi khi lấy thông tin từ Metaplex')
+          // Tiếp tục xử lý nếu không lấy được từ Metaplex
+        }
+
+        // Thử lấy metadata từ Token Extensions Program
+        try {
+          const tokenMetadata = await getTokenMetadata(connection, new PublicKey(mintAddress))
+          if (tokenMetadata) {
+            result = {
+              name: tokenMetadata.name || result.name,
+              symbol: tokenMetadata.symbol || result.symbol,
+              icon: result.icon, // Token Extensions không lưu hình ảnh, chỉ lưu URI
+            }
+
+            // Nếu có URI, thử lấy hình ảnh từ URI
+            if (tokenMetadata.uri) {
+              try {
+                const response = await fetch(tokenMetadata.uri)
+                if (response.ok) {
+                  const data = await response.json()
+                  if (data.image) {
+                    result.icon = data.image
+                  }
+                }
+              } catch (uriError) {
+                handleSilentError(uriError, 'Lỗi khi lấy metadata từ URI')
+                // Tiếp tục xử lý nếu không lấy được từ URI
+              }
+            }
+          }
+        } catch (tokenMetadataError) {
+          handleSilentError(tokenMetadataError, 'Lỗi khi lấy metadata từ Token Extensions')
+          // Tiếp tục xử lý nếu không lấy được metadata
+        }
+      }
+    } catch (error) {
+      handleSilentError(error, 'Lỗi khi lấy thông tin token')
+      // Trả về thông tin mặc định nếu có lỗi
+    }
+
+    // Lưu kết quả vào memory cache
+    tokenBasicInfoMemoryCache.set(mintAddress, {
+      ...result,
+      timestamp: Date.now(),
+    })
+
+    // Lưu kết quả vào localStorage cache
+    try {
+      const cacheKey = `token_basic_info_${mintAddress}`
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          data: result,
+          timestamp: Date.now(),
+        })
+      )
+    } catch (error) {
+      // Xử lý lỗi im lặng
+    }
+
+    return result
   }
 
   /**

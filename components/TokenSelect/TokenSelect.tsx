@@ -37,6 +37,14 @@ interface TokenExtensionDetails {
   error?: string
 }
 
+// Thêm type cho thông tin cơ bản của token
+interface TokenBasicInfo {
+  name?: string
+  symbol?: string
+  image?: string | null
+  [key: string]: unknown
+}
+
 export interface TokenSelectProps {
   value?: string
   onChange?: (value: string) => void
@@ -66,106 +74,106 @@ export function TokenSelect({
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [tokenExtensions, setTokenExtensions] = useState<Record<string, TokenExtensionDetails>>({})
-  const [tokenMetadata, setTokenMetadata] = useState<
-    Record<
-      string,
-      {
-        name?: string
-        symbol?: string
-        image?: string | null
-        [key: string]: unknown
-      }
-    >
-  >({})
-  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
+  const [tokenMetadata, setTokenMetadata] = useState<Record<string, TokenBasicInfo>>({})
+  const [isLoadingBasicInfo, setIsLoadingBasicInfo] = useState(false)
+  const [isLoadingExtensions, setIsLoadingExtensions] = useState(false)
   const [visibleTokens, setVisibleTokens] = useState<string[]>([])
 
-  // Tải metadata chỉ cho token đang hiển thị và token được chọn
+  // Tải thông tin cơ bản trước (tên, biểu tượng)
   useEffect(() => {
-    async function fetchVisibleTokensMetadata(tokenAddresses: string[]) {
-      if (tokenAddresses.length === 0 || isLoadingMetadata) return
+    async function fetchBasicTokenInfo(tokenAddresses: string[]) {
+      if (tokenAddresses.length === 0 || isLoadingBasicInfo) return
 
-      setIsLoadingMetadata(true)
+      setIsLoadingBasicInfo(true)
+
+      // Kiểm tra cache từ localStorage
+      try {
+        const cachedData = localStorage.getItem('token_basic_info_cache')
+        if (cachedData) {
+          const parsed = JSON.parse(cachedData)
+          if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+            // 24 giờ
+            setTokenMetadata(prev => ({ ...prev, ...parsed.data }))
+          }
+        }
+      } catch (error) {
+        console.error('Error loading cached token info:', error)
+      }
+
       const connection = new Connection(
         process.env.NEXT_PUBLIC_RPC_URL || 'https://api.devnet.solana.com',
         'confirmed'
       )
 
-      const newMetadata: Record<
-        string,
-        {
-          name?: string
-          symbol?: string
-          image?: string | null
-          [key: string]: unknown
+      const newMetadata: Record<string, TokenBasicInfo> = {}
+
+      // Xử lý theo batch để tránh quá tải
+      const batchSize = 10
+      for (let i = 0; i < tokenAddresses.length; i += batchSize) {
+        const batch = tokenAddresses
+          .slice(i, i + batchSize)
+          .filter(mint => mint !== 'SOL' && !tokenMetadata[mint])
+
+        if (batch.length === 0) continue
+
+        const promises = batch.map(async tokenMint => {
+          try {
+            // Chỉ lấy thông tin metadata cơ bản từ TokenService
+            const basicInfo = await TokenService.getTokenIconAndName(tokenMint, connection)
+            if (basicInfo) {
+              newMetadata[tokenMint] = {
+                name: basicInfo.name,
+                symbol: basicInfo.symbol,
+                image: basicInfo.icon,
+              }
+            }
+          } catch (error) {
+            if (
+              !(
+                error instanceof Error &&
+                error.message &&
+                error.message.includes('AccountNotFoundError')
+              )
+            ) {
+              console.error(`Error fetching basic info for ${tokenMint}:`, error)
+            }
+          }
+        })
+
+        await Promise.allSettled(promises)
+
+        // Đợi một chút trước khi xử lý batch tiếp theo
+        if (i + batchSize < tokenAddresses.length) {
+          await new Promise(resolve => setTimeout(resolve, 100))
         }
-      > = {}
-      const newExtensions: Record<string, TokenExtensionDetails> = {}
+      }
 
-      // Chỉ xử lý tối đa 5 token mỗi lần để tránh quá tải
-      const tokensToProcess = tokenAddresses.slice(0, 5)
-
-      const promises = tokensToProcess.map(async tokenMint => {
-        // Bỏ qua SOL native và token đã có metadata
-        if (tokenMint === 'SOL' || tokenMetadata[tokenMint]) return
-
-        try {
-          // Lấy thông tin metadata từ TokenService
-          const metadata = await TokenService.getMetaplexTokenMetadata(tokenMint, connection)
-          if (metadata) {
-            newMetadata[tokenMint] = metadata
-          }
-
-          // Lấy thông tin extension
-          const extensionInfo = await getDetailTokenExtensions(tokenMint)
-          if (extensionInfo) {
-            newExtensions[tokenMint] = extensionInfo
-          }
-        } catch (error) {
-          // Xử lý im lặng lỗi
-          if (
-            !(
-              error instanceof Error &&
-              error.message &&
-              error.message.includes('AccountNotFoundError')
-            )
-          ) {
-            console.error(`Error fetching metadata for token ${tokenMint}:`, error)
-          }
-        }
-      })
-
-      // Đợi tất cả promise hoàn thành
-      await Promise.allSettled(promises)
-
-      // Cập nhật state với metadata và extensions mới
+      // Cập nhật state và lưu vào cache
       if (Object.keys(newMetadata).length > 0) {
-        setTokenMetadata(prev => ({
-          ...prev,
-          ...newMetadata,
-        }))
+        setTokenMetadata(prev => {
+          const updated = { ...prev, ...newMetadata }
+
+          // Lưu vào localStorage
+          try {
+            localStorage.setItem(
+              'token_basic_info_cache',
+              JSON.stringify({
+                data: updated,
+                timestamp: Date.now(),
+              })
+            )
+          } catch (error) {
+            console.error('Error saving token info to cache:', error)
+          }
+
+          return updated
+        })
       }
 
-      if (Object.keys(newExtensions).length > 0) {
-        setTokenExtensions(prev => ({
-          ...prev,
-          ...newExtensions,
-        }))
-      }
-
-      setIsLoadingMetadata(false)
-
-      // Xử lý phần còn lại nếu còn
-      const remainingTokens = tokenAddresses.slice(5)
-      if (remainingTokens.length > 0) {
-        // Đợi một chút trước khi tiếp tục xử lý batch tiếp theo
-        setTimeout(() => {
-          fetchVisibleTokensMetadata(remainingTokens)
-        }, 500)
-      }
+      setIsLoadingBasicInfo(false)
     }
 
-    // Tạo danh sách các token cần tải metadata
+    // Tạo danh sách các token cần tải thông tin cơ bản
     const tokensToFetch: string[] = []
 
     // Luôn ưu tiên token đã chọn
@@ -181,14 +189,109 @@ export function TokenSelect({
     })
 
     if (tokensToFetch.length > 0) {
-      fetchVisibleTokensMetadata(tokensToFetch)
+      fetchBasicTokenInfo(tokensToFetch)
     }
-  }, [value, visibleTokens, tokenMetadata, isLoadingMetadata])
+  }, [value, visibleTokens, tokenMetadata, isLoadingBasicInfo])
+
+  // Tải thông tin extension sau khi đã tải thông tin cơ bản
+  useEffect(() => {
+    async function fetchTokenExtensionsBackground(tokenAddresses: string[]) {
+      if (tokenAddresses.length === 0 || isLoadingExtensions) return
+
+      setIsLoadingExtensions(true)
+
+      // Kiểm tra cache từ localStorage
+      try {
+        const cachedData = localStorage.getItem('token_extensions_cache')
+        if (cachedData) {
+          const parsed = JSON.parse(cachedData)
+          if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+            // 24 giờ
+            setTokenExtensions(prev => ({ ...prev, ...parsed.data }))
+          }
+        }
+      } catch (error) {
+        console.error('Error loading cached extensions:', error)
+      }
+
+      const newExtensions: Record<string, TokenExtensionDetails> = {}
+
+      // Xử lý theo batch để tránh quá tải
+      const batchSize = 5
+      for (let i = 0; i < tokenAddresses.length; i += batchSize) {
+        const batch = tokenAddresses
+          .slice(i, i + batchSize)
+          .filter(mint => mint !== 'SOL' && !tokenExtensions[mint])
+
+        if (batch.length === 0) continue
+
+        const promises = batch.map(async tokenMint => {
+          try {
+            const extensionInfo = await getDetailTokenExtensions(tokenMint)
+            if (extensionInfo) {
+              newExtensions[tokenMint] = extensionInfo
+            }
+          } catch (error) {
+            if (
+              !(
+                error instanceof Error &&
+                error.message &&
+                error.message.includes('AccountNotFoundError')
+              )
+            ) {
+              console.error(`Error fetching extensions for ${tokenMint}:`, error)
+            }
+          }
+        })
+
+        await Promise.allSettled(promises)
+
+        // Đợi một chút trước khi xử lý batch tiếp theo
+        if (i + batchSize < tokenAddresses.length) {
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+      }
+
+      // Cập nhật state và lưu vào cache
+      if (Object.keys(newExtensions).length > 0) {
+        setTokenExtensions(prev => {
+          const updated = { ...prev, ...newExtensions }
+
+          // Lưu vào localStorage
+          try {
+            localStorage.setItem(
+              'token_extensions_cache',
+              JSON.stringify({
+                data: updated,
+                timestamp: Date.now(),
+              })
+            )
+          } catch (error) {
+            console.error('Error saving extensions to cache:', error)
+          }
+
+          return updated
+        })
+      }
+
+      setIsLoadingExtensions(false)
+    }
+
+    // Không fetch extensions nếu đang tải thông tin cơ bản
+    if (isLoadingBasicInfo) return
+
+    // Sử dụng setTimeout để không block main thread và fetch sau khi UI đã render
+    const timer = setTimeout(() => {
+      fetchTokenExtensionsBackground(visibleTokens)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [visibleTokens, tokenExtensions, isLoadingBasicInfo, isLoadingExtensions])
 
   // Lấy thông tin extension cho token khi chọn
   useEffect(() => {
-    async function fetchTokenExtensions() {
-      if (!value || tokenExtensions[value]) return
+    async function fetchSelectedTokenExtension() {
+      if (!value || tokenExtensions[value] || isLoadingExtensions) return
 
       try {
         const extensionInfo = await getDetailTokenExtensions(value)
@@ -201,10 +304,8 @@ export function TokenSelect({
       }
     }
 
-    if (value && !tokenExtensions[value]) {
-      fetchTokenExtensions()
-    }
-  }, [value, tokenExtensions])
+    fetchSelectedTokenExtension()
+  }, [value, tokenExtensions, isLoadingExtensions])
 
   // Hàm lấy thông tin hiển thị của token - tách riêng để sử dụng nhất quán
   const getTokenDisplayInfo = useCallback(
@@ -253,6 +354,11 @@ export function TokenSelect({
           if (a.mint === WSOL_MINT) return -1
           if (b.mint === WSOL_MINT) return 1
         }
+
+        // Đưa token có balance lên đầu
+        if (a.balance > 0 && b.balance === 0) return -1
+        if (a.balance === 0 && b.balance > 0) return 1
+
         // Sort by balance (descending)
         return b.balance - a.balance
       })
@@ -351,7 +457,7 @@ export function TokenSelect({
           </div>
 
           <ScrollArea className="h-60 custom-scroll">
-            {loading || isLoadingMetadata ? (
+            {loading || isLoadingBasicInfo || isLoadingExtensions ? (
               <div className="py-6 flex flex-col items-center justify-center gap-2">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 <p className="text-sm text-muted-foreground">Loading tokens...</p>
