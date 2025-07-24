@@ -44,7 +44,6 @@ const AIRDROP_AMOUNTS = {
   USDC: 100, // 100 USDC
   wSOL: 1, // 1 WSOL
   TK22: 100, // 100 TK22
-  HOOK: 100, // 100 HOOK
 }
 
 // Lấy keypair từ private key được lưu trong env
@@ -404,19 +403,6 @@ export async function POST(request: NextRequest) {
         responseMessage = `Đã gửi ${AIRDROP_AMOUNTS.TK22} Token 2022 (TK22) vào ví của bạn thành công! Signature: ${signature}`
         break
 
-      case 'HOOK':
-        // Airdrop Transfer Hook Token
-        signature = await airdropTransferHookToken(
-          connection,
-          adminKeypair,
-          receiverPublicKey,
-          HOOK_MINT,
-          AIRDROP_AMOUNTS.HOOK,
-          9 // Decimals cho Transfer Hook Token
-        )
-        responseMessage = `Đã gửi ${AIRDROP_AMOUNTS.HOOK} Transfer Hook Token (HOOK) vào ví của bạn thành công! Signature: ${signature}`
-        break
-
       default:
         responseMessage = `Không hỗ trợ airdrop token ${tokenSymbol}`
         return NextResponse.json({ error: responseMessage }, { status: 400 })
@@ -462,15 +448,6 @@ function getTokenType(symbol: string) {
         standard: 'Token-2022 Program',
         programId: 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb',
         mintAddress: TK22_MINT.toString(),
-      }
-    case 'HOOK':
-      return {
-        type: 'spl-token-2022-hook',
-        standard: 'Token-2022 Program with Transfer Hook',
-        programId: 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb',
-        transferHook: true,
-        transferHookProgramId: TRANSFER_HOOK_PROGRAM_ID.toString(),
-        mintAddress: HOOK_MINT.toString(),
       }
     default:
       return { type: 'unknown' }

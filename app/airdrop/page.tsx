@@ -86,10 +86,10 @@ function AirdropSuccessDialog(props: AirdropSuccessDialogProps) {
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text).then(
       () => {
-        toast.success(`${type} đã được sao chép`)
+        toast.success(`${type} copied to clipboard`)
       },
       () => {
-        toast.error('Không thể sao chép văn bản')
+        toast.error('Unable to copy text')
       }
     )
   }
@@ -100,19 +100,19 @@ function AirdropSuccessDialog(props: AirdropSuccessDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Check className="w-6 h-6 text-green-500" />
-            Airdrop Thành Công
+            Airdrop Successful
           </DialogTitle>
           <DialogDescription className="text-base">
-            Giao dịch của bạn đã được xác nhận trên blockchain Solana.
+            Your transaction has been confirmed on the Solana blockchain.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-2">
           <Alert variant="default" className="bg-green-900/20 text-green-400 border-green-800/50">
             <Check className="h-5 w-5 text-green-500" />
-            <AlertTitle className="text-base font-medium">Giao dịch Thành Công</AlertTitle>
+            <AlertTitle className="text-base font-medium">Transaction Successful</AlertTitle>
             <AlertDescription className="text-sm">
-              Bạn đã nhận thành công {token.amount} {token.symbol}.
+              You have successfully received {token.amount} {token.symbol}.
             </AlertDescription>
           </Alert>
 
@@ -137,7 +137,7 @@ function AirdropSuccessDialog(props: AirdropSuccessDialogProps) {
                     <line x1="16" y1="8" x2="2" y2="22"></line>
                     <line x1="17.5" y1="15" x2="9" y2="15"></line>
                   </svg>
-                  Mã Giao Dịch
+                  Transaction ID
                 </h3>
                 <a
                   href={solscanUrl}
@@ -145,17 +145,17 @@ function AirdropSuccessDialog(props: AirdropSuccessDialogProps) {
                   rel="noopener noreferrer"
                   className="text-blue-400 hover:text-blue-300 flex items-center text-sm font-medium"
                 >
-                  Xem trên Solscan <ExternalLink className="w-3 h-3 ml-1" />
+                  View on Solscan <ExternalLink className="w-3 h-3 ml-1" />
                 </a>
               </div>
               <div
                 className="bg-slate-800 p-3 rounded border border-slate-700 font-mono text-sm break-all cursor-pointer hover:bg-slate-700 transition-colors text-white"
-                onClick={() => copyToClipboard(signature, 'Mã giao dịch')}
+                onClick={() => copyToClipboard(signature, 'Transaction ID')}
               >
                 {signature}
                 <div className="text-xs text-slate-300 mt-1 flex items-center gap-1">
                   <Copy size={12} />
-                  Nhấp để sao chép
+                  Click to copy
                 </div>
               </div>
             </div>
@@ -181,7 +181,7 @@ function AirdropSuccessDialog(props: AirdropSuccessDialogProps) {
                       <path d="M8 12h8"></path>
                       <path d="M12 16V8"></path>
                     </svg>
-                    Thông Tin Token
+                    Token Information
                   </h3>
                 </div>
                 <div className="bg-slate-800 p-3 rounded border border-slate-700 text-sm">
@@ -264,7 +264,7 @@ function AirdropSuccessDialog(props: AirdropSuccessDialogProps) {
                         rel="noopener noreferrer"
                         className="text-blue-400 hover:text-blue-300 flex items-center text-sm font-medium"
                       >
-                        Xem <ExternalLink className="w-3 h-3 ml-1" />
+                        View <ExternalLink className="w-3 h-3 ml-1" />
                       </a>
                     )}
                   </div>
@@ -275,7 +275,7 @@ function AirdropSuccessDialog(props: AirdropSuccessDialogProps) {
                     <div className="truncate">{tokenInfo.mintAddress}</div>
                     <div className="text-xs text-slate-300 mt-1 flex items-center gap-1">
                       <Copy size={12} />
-                      Nhấp để sao chép
+                      Click to copy
                     </div>
                   </div>
                 </div>
@@ -286,13 +286,13 @@ function AirdropSuccessDialog(props: AirdropSuccessDialogProps) {
 
         <DialogFooter className="flex gap-2 pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-            Đóng
+            Close
           </Button>
           <Button
             onClick={() => window.open(solscanUrl, '_blank')}
             className="flex-1 bg-green-600 hover:bg-green-700"
           >
-            Xem Chi Tiết Giao Dịch
+            View Transaction Details
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -341,13 +341,6 @@ export default function AirdropPage() {
         image: '/images/10.avif',
         description: 'New Token Standard with Advanced Solana Features',
         mintAddress: 'EyqZRrQBwtjdvHQS5BKWKHSh9HAtFhsAXzptP8wp2949',
-      },
-      {
-        name: 'Transfer Hook Token',
-        symbol: 'HOOK',
-        image: '/images/tdh.jpg',
-        description: 'Token 2022 with Transfer Hook integration',
-        mintAddress: 'GQLRDyiqAEfBVL1LZQRvBNkN6L4b3fPynHqZtPQkV5y9',
       },
     ],
     []
@@ -399,7 +392,7 @@ export default function AirdropPage() {
 
   const handleClaimToken = async (tokenSymbol: string) => {
     if (!connected || !publicKey) {
-      toast.error('Vui lòng kết nối ví của bạn trước')
+      toast.error('Please connect your wallet first')
       return
     }
 
@@ -420,7 +413,7 @@ export default function AirdropPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Có lỗi xảy ra')
+        throw new Error(data.error || 'An error occurred')
       }
 
       if (data.signature) {
@@ -445,7 +438,7 @@ export default function AirdropPage() {
       }
     } catch (error) {
       toast.error(
-        `Lỗi khi claim ${tokenSymbol}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Error claiming ${tokenSymbol}: ${error instanceof Error ? error.message : 'Unknown error'}`
       )
     } finally {
       setIsLoading(null)
@@ -541,7 +534,7 @@ export default function AirdropPage() {
                                 className="text-xs text-blue-500 flex items-center gap-1 hover:underline"
                               >
                                 <ExternalLink size={12} />
-                                Xem giao dịch
+                                View transaction
                               </Link>
                             </div>
                           )}
@@ -555,7 +548,7 @@ export default function AirdropPage() {
                             {isLoading === token.symbol ? (
                               <div className="flex items-center">
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Đang xử lý...
+                                Processing...
                               </div>
                             ) : (
                               `Claim ${token.symbol}`
@@ -610,5 +603,4 @@ const AIRDROP_AMOUNTS = {
   USDC: 100,
   wSOL: 1,
   TK22: 100,
-  HOOK: 100,
 }
