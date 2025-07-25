@@ -5,6 +5,7 @@ import {
   Keypair,
   Transaction,
   sendAndConfirmTransaction,
+  SystemProgram,
 } from '@solana/web3.js'
 import {
   TOKEN_PROGRAM_ID,
@@ -12,6 +13,8 @@ import {
   createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddress,
   createTransferInstruction,
+  NATIVE_MINT,
+  createSyncNativeInstruction,
 } from '@solana/spl-token'
 import {
   TOKEN_2022_PROGRAM_ID,
@@ -22,7 +25,6 @@ import {
 } from '@solana/spl-token'
 import * as anchor from '@coral-xyz/anchor'
 import transferHookIdl from '@/idl/transfer_hook.json'
-import { SystemProgram } from '@solana/web3.js'
 
 // Địa chỉ mint của USDC trên devnet (từ input của user)
 const USDC_MINT = new PublicKey('BFR68SCH16jfXkgWxaY4ZAE4y1KNUxhE9baag8YeZEBj')
@@ -66,6 +68,9 @@ async function airdropSPLToken(
   amount: number,
   decimals: number = 6 // mặc định là 6 cho USDC
 ): Promise<string> {
+  // Xử lý đặc biệt cho Wrapped SOL
+  const isWrappedSol = mintAddress.equals(WSOL_MINT)
+
   // Lấy địa chỉ token account của admin
   const adminTokenAccount = await getAssociatedTokenAddress(
     mintAddress,
@@ -89,8 +94,9 @@ async function airdropSPLToken(
 
   // Kiểm tra xem token account của người nhận đã tồn tại chưa
   const receiverTokenAccountInfo = await connection.getAccountInfo(receiverTokenAccount)
+
+  // Nếu chưa tồn tại, thêm instruction để tạo token account
   if (!receiverTokenAccountInfo) {
-    // Nếu chưa tồn tại, thêm instruction để tạo token account
     transaction.add(
       createAssociatedTokenAccountInstruction(
         adminKeypair.publicKey, // Payer
@@ -103,18 +109,63 @@ async function airdropSPLToken(
     )
   }
 
-  // Thêm instruction để chuyển token
-  transaction.add(
-    createTransferInstruction(
-      adminTokenAccount, // Source
-      receiverTokenAccount, // Destination
-      adminKeypair.publicKey, // Authority (owner of source)
-      amount * 10 ** decimals // Amount, nhân với 10^decimals để đúng format
+  if (isWrappedSol) {
+    // Với Wrapped SOL, chúng ta cần đảm bảo admin account có đủ SOL để wrap và gửi
+    const adminTokenAccountInfo = await connection.getAccountInfo(adminTokenAccount)
+
+    // Nếu admin token account chưa tồn tại, tạo nó
+    if (!adminTokenAccountInfo) {
+      transaction.add(
+        createAssociatedTokenAccountInstruction(
+          adminKeypair.publicKey,
+          adminTokenAccount,
+          adminKeypair.publicKey,
+          NATIVE_MINT,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        )
+      )
+    }
+
+    // Chuyển native SOL vào admin token account
+    const lamportsToWrap = amount * Math.pow(10, decimals)
+    transaction.add(
+      SystemProgram.transfer({
+        fromPubkey: adminKeypair.publicKey,
+        toPubkey: adminTokenAccount,
+        lamports: lamportsToWrap,
+      })
     )
-  )
+
+    // Đồng bộ hóa tài khoản Wrapped SOL
+    transaction.add(createSyncNativeInstruction(adminTokenAccount))
+
+    // Sau đó chuyển Wrapped SOL từ admin sang receiver
+    transaction.add(
+      createTransferInstruction(
+        adminTokenAccount,
+        receiverTokenAccount,
+        adminKeypair.publicKey,
+        amount * Math.pow(10, decimals)
+      )
+    )
+  } else {
+    // Đối với các token thông thường, chỉ cần chuyển token
+    transaction.add(
+      createTransferInstruction(
+        adminTokenAccount, // Source
+        receiverTokenAccount, // Destination
+        adminKeypair.publicKey, // Authority (owner of source)
+        amount * Math.pow(10, decimals) // Amount, nhân với 10^decimals để đúng format
+      )
+    )
+  }
 
   // Gửi và xác nhận transaction
-  const signature = await sendAndConfirmTransaction(connection, transaction, [adminKeypair])
+  const signature = await sendAndConfirmTransaction(connection, transaction, [adminKeypair], {
+    commitment: 'confirmed',
+    skipPreflight: false,
+  })
 
   return signature
 }
