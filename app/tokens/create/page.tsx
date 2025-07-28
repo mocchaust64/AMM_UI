@@ -266,26 +266,12 @@ export default function CreateToken() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Create New Token</h1>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push('/tokens')}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Tokens
-            </Button>
-          </div>
+          <div className="flex justify-between items-center mb-6"></div>
 
           {/* Improved main card */}
           <Card>
             <CardHeader className="bg-muted/50 border-b">
-              <CardTitle className="text-xl font-semibold">Token Information</CardTitle>
-              <CardDescription>
-                Enter basic information and configure extensions for your token
-              </CardDescription>
+              <CardTitle className="text-xl font-semibold">Token Create New Token</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="grid gap-8">
